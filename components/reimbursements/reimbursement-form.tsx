@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useActionState } from "react";
-import { Loader2 } from "lucide-react";
+import { useActionState, useTransition } from "react";
+import { toast } from "sonner";
+import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,7 @@ import {
 import { FileDropzone } from "@/components/shared/file-dropzone";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/validations/reimbursement";
 import { submitReimbursement, type SubmitReimbursementState } from "@/lib/actions/reimbursements";
+import { scanReceipt } from "@/lib/actions/receipt-scan";
 
 type BudgetArea = {
   id: string;
@@ -44,8 +46,46 @@ export function ReimbursementForm({
   const [selectedAreaId, setSelectedAreaId] = React.useState<string>(
     () => state.values?.budgetAreaId ?? "",
   );
+  const [receiptFile, setReceiptFile] = React.useState<File | null>(null);
+  const [scanning, startScanning] = useTransition();
+  const amountRef = React.useRef<HTMLInputElement>(null);
+  const purchaseDateRef = React.useRef<HTMLInputElement>(null);
+  const eventNameRef = React.useRef<HTMLInputElement>(null);
+  const descriptionRef = React.useRef<HTMLTextAreaElement>(null);
 
   const selectedArea = budgetAreas.find((a) => a.id === selectedAreaId);
+
+  function handleScanReceipt() {
+    if (!receiptFile) return;
+    startScanning(async () => {
+      const formData = new FormData();
+      formData.append("receipt", receiptFile);
+      const result = await scanReceipt(formData);
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      if (!result.amount && !result.purchaseDate && !result.vendor && !result.description) {
+        toast.error("Couldn't make out any details from this receipt — please fill in manually.");
+        return;
+      }
+
+      if (result.amount != null && amountRef.current) {
+        amountRef.current.value = String(result.amount);
+      }
+      if (result.purchaseDate && purchaseDateRef.current) {
+        purchaseDateRef.current.value = result.purchaseDate;
+      }
+      if (result.vendor && eventNameRef.current && !eventNameRef.current.value) {
+        eventNameRef.current.value = result.vendor;
+      }
+      if (result.description && descriptionRef.current && !descriptionRef.current.value) {
+        descriptionRef.current.value = result.description;
+      }
+      toast.success("Auto-filled from the receipt — please double-check before submitting");
+    });
+  }
 
   return (
     <form action={formAction} className="space-y-6">
@@ -76,6 +116,7 @@ export function ReimbursementForm({
               $
             </span>
             <Input
+              ref={amountRef}
               id="amount"
               name="amount"
               type="number"
@@ -91,6 +132,7 @@ export function ReimbursementForm({
         <div>
           <Label htmlFor="purchaseDate">Date of Purchase</Label>
           <Input
+            ref={purchaseDateRef}
             id="purchaseDate"
             name="purchaseDate"
             type="date"
@@ -104,8 +146,32 @@ export function ReimbursementForm({
 
       <div>
         <Label>Receipt</Label>
-        <div className="mt-1.5">
-          <FileDropzone name="receipt" error={state.fieldErrors?.receipt?.[0]} />
+        <div className="mt-1.5 space-y-2">
+          <FileDropzone
+            name="receipt"
+            error={state.fieldErrors?.receipt?.[0]}
+            onFileChange={setReceiptFile}
+          />
+          {receiptFile && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={scanning}
+              onClick={handleScanReceipt}
+            >
+              {scanning ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+              Scan Receipt with AI
+            </Button>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Optional — reads the amount, date, and description off your receipt so you don&apos;t
+            have to type them. Always double-check before submitting.
+          </p>
         </div>
       </div>
 
@@ -158,6 +224,7 @@ export function ReimbursementForm({
       <div>
         <Label htmlFor="eventName">Event Name (optional)</Label>
         <Input
+          ref={eventNameRef}
           id="eventName"
           name="eventName"
           defaultValue={state.values?.eventName ?? ""}
@@ -168,6 +235,7 @@ export function ReimbursementForm({
       <div>
         <Label htmlFor="description">Description</Label>
         <Textarea
+          ref={descriptionRef}
           id="description"
           name="description"
           defaultValue={state.values?.description ?? ""}

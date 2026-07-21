@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  // @napi-rs/canvas ships a native .node binary (used to render PDF receipts
+  // to an image for AI scanning) that webpack can't parse as a JS module —
+  // this keeps it (and unpdf, which loads it dynamically) as a real Node
+  // require at runtime instead of trying to bundle it.
+  serverExternalPackages: ["@napi-rs/canvas", "unpdf"],
   images: {
     remotePatterns: [
       {
