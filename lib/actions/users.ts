@@ -40,6 +40,22 @@ export async function updateUserProfile(
   return { success: true };
 }
 
+export async function toggleTestAccount(
+  targetUserId: string,
+  isTestAccount: boolean,
+): Promise<ActionResult> {
+  const currentUser = await requireSuperAdmin();
+
+  if (targetUserId === currentUser.id) {
+    return { success: false, error: "You can't mark your own account as a test account." };
+  }
+
+  await prisma.user.update({ where: { id: targetUserId }, data: { isTestAccount } });
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
 export async function updateUserRole(targetUserId: string, role: UserRole): Promise<ActionResult> {
   const currentUser = await requireRoleManager();
   const permissions = ROLE_PERMISSIONS[currentUser.role] ?? {

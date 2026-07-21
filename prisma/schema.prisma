@@ -99,6 +99,9 @@ model User {
   fullName  String?
   avatarUrl String?
   role      UserRole @default(MEMBER)
+  // Marks a temporary/trial admin account: their real name/email/avatar are
+  // hidden from everyone except the Super Admin, everywhere identity is shown.
+  isTestAccount Boolean @default(false)
   // Second-factor PIN for admin routes (on top of Google sign-in), set only
   // once a member becomes Treasurer/Super Admin. Never store the raw PIN.
   passwordHash String?

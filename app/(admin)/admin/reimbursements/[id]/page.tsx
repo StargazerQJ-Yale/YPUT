@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getSignedReceiptUrl, withHistoryAttachmentUrls } from "@/lib/storage";
+import { getPublicIdentity } from "@/lib/identity";
 import { ReimbursementDetail } from "@/components/reimbursements/reimbursement-detail";
 import { AdminActions } from "@/components/reimbursements/admin-actions";
 import { EditReimbursementDialog } from "@/components/reimbursements/edit-reimbursement-dialog";
@@ -38,11 +39,19 @@ export default async function AdminReimbursementDetailPage({
   });
 
   const receiptUrl = await getSignedReceiptUrl(reimbursement.receiptPath);
-  const statusHistory = await withHistoryAttachmentUrls(reimbursement.statusHistory);
+  const statusHistoryWithAttachments = await withHistoryAttachmentUrls(reimbursement.statusHistory);
+  const statusHistory = statusHistoryWithAttachments.map((entry) => ({
+    ...entry,
+    changedBy: getPublicIdentity(entry.changedBy, viewer),
+  }));
+  const payment = reimbursement.payment
+    ? { ...reimbursement.payment, recordedBy: getPublicIdentity(reimbursement.payment.recordedBy, viewer) }
+    : null;
+  const submitter = getPublicIdentity(reimbursement.submitter, viewer);
 
   return (
     <ReimbursementDetail
-      reimbursement={{ ...reimbursement, statusHistory }}
+      reimbursement={{ ...reimbursement, submitter, statusHistory, payment }}
       receiptUrl={receiptUrl}
       showSubmitter
       actions={

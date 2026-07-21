@@ -10,11 +10,13 @@ import {
 import { RoleSelect } from "@/components/admin/role-select";
 import { EditUserDialog } from "@/components/admin/edit-user-dialog";
 import { ResetPinButton } from "@/components/admin/reset-pin-button";
+import { TestAccountToggle } from "@/components/admin/test-account-toggle";
 import { requireRoleManager } from "@/lib/auth";
 import { getDefaultOrg } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 import { ROLE_PERMISSIONS } from "@/lib/role-permissions";
+import { getPublicIdentity } from "@/lib/identity";
 
 export default async function UsersPage() {
   const currentUser = await requireRoleManager();
@@ -46,12 +48,14 @@ export default async function UsersPage() {
               <TableHead>User</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead>Role</TableHead>
+              {isSuperAdmin && <TableHead>Test Account</TableHead>}
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {users.map((user) => {
-              const initials = (user.fullName || user.email)
+              const identity = getPublicIdentity(user, currentUser);
+              const initials = (identity.fullName || identity.email || "?")
                 .split(" ")
                 .map((part) => part[0])
                 .slice(0, 2)
@@ -65,12 +69,14 @@ export default async function UsersPage() {
                   <TableCell className="whitespace-normal">
                     <div className="flex items-center gap-2.5">
                       <Avatar className="size-8">
-                        <AvatarImage src={user.avatarUrl ?? undefined} />
+                        <AvatarImage src={identity.avatarUrl ?? undefined} />
                         <AvatarFallback>{initials}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="truncate font-medium">{user.fullName ?? "—"}</p>
-                        <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                        <p className="truncate font-medium">{identity.fullName ?? "—"}</p>
+                        {identity.email && (
+                          <p className="truncate text-xs text-muted-foreground">{identity.email}</p>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -85,6 +91,13 @@ export default async function UsersPage() {
                       disabled={!canManageThisUser}
                     />
                   </TableCell>
+                  {isSuperAdmin && (
+                    <TableCell>
+                      {user.id !== currentUser.id && (
+                        <TestAccountToggle userId={user.id} initialValue={user.isTestAccount} />
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     {isSuperAdmin && (
                       <div className="flex items-center gap-1">
