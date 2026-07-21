@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3001/ledger --max-time 8)",
+      "Bash(curl -s http://localhost:3001/ledger --max-time 8)",
+      "Bash(node \"/c/Users/Lenovo/AppData/Local/Temp/claude/bundled-skills/2.1.215/b0dac0d0cf73001a945dced82ad5813b/dataviz/scripts/validate_palette.js\" \"#2a78d6,#008300,#e87ba4,#eda100,#1baf7a\" --mode light)",
+      "Bash(node \"/c/Users/Lenovo/AppData/Local/Temp/claude/bundled-skills/2.1.215/b0dac0d0cf73001a945dced82ad5813b/dataviz/scripts/validate_palette.js\" \"#3987e5,#008300,#d55181,#c98500,#199e70\" --mode dark --surface \"#1a1a19\")",
+      "Bash(curl -s -o /dev/null -w \"analytics: %{http_code}\\\\n\" http://localhost:3001/admin/analytics --max-time 8)",
+      "Bash(curl -s -o /dev/null -w \"settings: %{http_code}\\\\n\" http://localhost:3001/admin/settings --max-time 8)",
+      "Bash(curl -s -o /dev/null -w \"ledger \\(public\\): %{http_code}\\\\n\" http://localhost:3001/ledger --max-time 8)",
+      "Bash(curl -s -o /dev/null -w \"login: %{http_code}\\\\n\" http://localhost:3001/login --max-time 8)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('hex'\\)\\)\")",
+      "Bash(curl -s -o /dev/null -w \"dashboard: %{http_code}\\\\n\" http://localhost:3001/dashboard --max-time 8)",
+      "PowerShell(Get-Process -Id 43512)",
+      "PowerShell(Stop-Process -Id 43512 -Force)",
+      "PowerShell(Get-Process -Id 50992)",
+      "PowerShell(Get-PSDrive C | Select-Object Used,Free,@{N='FreeGB';E={[math]::Round\\($_.Free/1GB,2\\)}})",
+      "Bash(curl -s -o /dev/null -w \"ledger export: %{http_code}\\\\n\" \"http://localhost:3001/api/exports/ledger?format=csv\" --max-time 8)",
+      "Bash(curl -s -o /dev/null -w \"budgets export: %{http_code}\\\\n\" \"http://localhost:3001/api/exports/budgets?format=csv\" --max-time 8)",
+      "Bash(curl -s -o /dev/null -w \"monthly export: %{http_code}\\\\n\" \"http://localhost:3001/api/exports/monthly?format=csv\" --max-time 8)",
+      "Bash(curl -s -o /dev/null -w \"annual export: %{http_code}\\\\n\" \"http://localhost:3001/api/exports/annual?format=csv\" --max-time 8)",
+      "PowerShell(Get-PSDrive C | Select-Object @{N='FreeGB';E={[math]::Round\\($_.Free/1GB,2\\)}})",
+      "PowerShell(Stop-Process -Id 50992 -Force -ErrorAction SilentlyContinue)",
+      "Bash(curl -s -o /dev/null -w \"ledger export: %{http_code}\\\\n\" \"http://localhost:3001/api/exports/ledger?format=csv\" --max-time 15)",
+      "Bash(curl -s -o /dev/null -w \"budgets export: %{http_code}\\\\n\" \"http://localhost:3001/api/exports/budgets?format=csv\" --max-time 15)",
+      "Bash(curl -s -o /dev/null -w \"monthly export: %{http_code}\\\\n\" \"http://localhost:3001/api/exports/monthly?format=csv\" --max-time 15)",
+      "Bash(curl -s -o /dev/null -w \"annual export: %{http_code}\\\\n\" \"http://localhost:3001/api/exports/annual?format=csv\" --max-time 15)",
+      "PowerShell(Get-Process -Id 49400)",
+      "PowerShell(Stop-Process -Id 49400 -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Process -Id 59952)",
+      "PowerShell(Stop-Process -Id 59952 -Force -ErrorAction SilentlyContinue)",
+      "Bash(curl -s -o /dev/null -w \"guests list: %{http_code}\\\\n\" http://localhost:3001/admin/guests --max-time 8)",
+      "Bash(curl -s -o /dev/null -w \"guest detail: %{http_code}\\\\n\" http://localhost:3001/admin/guests/test --max-time 8)",
+      "PowerShell(Stop-Process -Id 60392 -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Id 9536 -Force -ErrorAction SilentlyContinue)"
+    ]
+  }
+}
