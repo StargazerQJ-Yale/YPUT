@@ -1,0 +1,335 @@
+// Treasury Portal — Prisma schema
+// Phase 1 implements auth, submission, and admin review. Budget usage/ledger
+// automation, public ledger, analytics, OCR, and notifications are Phase 2-4,
+// but the tables below already model those concepts so later phases only add
+// logic, not migrations that reshape existing data.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Organization / Fiscal Year — enables multi-org and multi-fiscal-year later.
+// A single row of each is seeded for now.
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  // Public /ledger page: whether submitter names show on transactions, or
+  // stay hidden (default). A Super Admin toggle at /admin/settings.
+  showMemberNamesOnPublicLedger Boolean @default(false)
+
+  fiscalYears          FiscalYear[]
+  users                User[]
+  reimbursementCycles  ReimbursementCycle[]
+  budgetAreas          BudgetArea[]
+  reimbursements       Reimbursement[]
+  ledgerTransactions   LedgerTransaction[]
+  fundDeposits         FundDeposit[]
+  lectureshipFunds     LectureshipFund[]
+  guests               Guest[]
+}
+
+model FiscalYear {
+  id        String   @id @default(cuid())
+  orgId     String
+  label     String // e.g. "2025-2026"
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  budgetAreas    BudgetArea[]
+  reimbursements Reimbursement[]
+  fundDeposits   FundDeposit[]
+
+  @@unique([orgId, label])
+  @@index([orgId])
+}
+
+// ---------------------------------------------------------------------------
+// Fund Deposits — the org's income side (money received over the year, e.g.
+// university allocations, fundraiser proceeds). The "total fund" for a fiscal
+// year is the sum of these, mirroring how the ledger sums expenses.
+// ---------------------------------------------------------------------------
+
+model FundDeposit {
+  id               String   @id @default(cuid())
+  orgId            String
+  fiscalYearId     String
+  amount           Decimal  @db.Decimal(12, 2)
+  source           String // e.g. "Fall allocation", "Fundraiser proceeds"
+  depositDate      DateTime
+  recordedByUserId String
+  createdAt        DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+  recordedBy   User         @relation("FundDepositRecordedBy", fields: [recordedByUserId], references: [id])
+
+  @@index([orgId, fiscalYearId])
+}
+
+// ---------------------------------------------------------------------------
+// Users & roles
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  MEMBER
+  TREASURER
+  SUPER_ADMIN
+}
+
+// id matches the Supabase auth.users.id (uid) — there is no separate local
+// password/identity, Supabase Auth is the source of truth for login.
+model User {
+  id        String   @id
+  orgId     String
+  email     String   @unique
+  fullName  String?
+  avatarUrl String?
+  role      UserRole @default(MEMBER)
+  // Second-factor PIN for admin routes (on top of Google sign-in), set only
+  // once a member becomes Treasurer/Super Admin. Never store the raw PIN.
+  passwordHash String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  submittedReimbursements   Reimbursement[]             @relation("Submitter")
+  treasuredCycles           ReimbursementCycle[]        @relation("CycleTreasurer")
+  statusChanges             ReimbursementStatusHistory[] @relation("StatusChangedBy")
+  recordedPayments          Payment[]                   @relation("PaymentRecordedBy")
+  recordedFundDeposits      FundDeposit[]                @relation("FundDepositRecordedBy")
+  createdGuests             Guest[]                     @relation("GuestCreatedBy")
+
+  @@index([orgId])
+}
+
+// ---------------------------------------------------------------------------
+// Reimbursement cycles — treasurer rotations. Submissions are auto-assigned
+// to whichever cycle is active at submission time.
+// ---------------------------------------------------------------------------
+
+model ReimbursementCycle {
+  id             String   @id @default(cuid())
+  orgId          String
+  treasurerUserId String
+  label          String
+  startDate      DateTime
+  endDate        DateTime
+  createdAt      DateTime @default(now())
+
+  organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  treasurer      User            @relation("CycleTreasurer", fields: [treasurerUserId], references: [id])
+  reimbursements Reimbursement[]
+
+  @@index([orgId, startDate, endDate])
+}
+
+// ---------------------------------------------------------------------------
+// Budgets — hierarchy of Budget Area -> Budget Item. Used/Remaining/% are
+// computed from paid reimbursements starting in Phase 2; only budgetedAmount
+// is authored data.
+// ---------------------------------------------------------------------------
+
+model BudgetArea {
+  id           String   @id @default(cuid())
+  orgId        String
+  fiscalYearId String
+  name         String
+  createdAt    DateTime @default(now())
+
+  organization   Organization    @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  fiscalYear     FiscalYear      @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+  budgetItems    BudgetItem[]
+  reimbursements Reimbursement[]
+
+  @@unique([fiscalYearId, name])
+  @@index([orgId])
+}
+
+model BudgetItem {
+  id              String   @id @default(cuid())
+  budgetAreaId    String
+  name            String
+  budgetedAmount  Decimal  @db.Decimal(12, 2)
+  createdAt       DateTime @default(now())
+
+  budgetArea         BudgetArea          @relation(fields: [budgetAreaId], references: [id], onDelete: Cascade)
+  reimbursements      Reimbursement[]
+  ledgerTransactions  LedgerTransaction[]
+
+  @@unique([budgetAreaId, name])
+}
+
+// ---------------------------------------------------------------------------
+// Reimbursements — the core submission object.
+// ---------------------------------------------------------------------------
+
+enum PaymentMethod {
+  VENMO
+  ZELLE
+  BANK_TRANSFER
+}
+
+enum ReimbursementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_INFO
+  PAID
+  WITHDRAWN
+}
+
+model Reimbursement {
+  id              String              @id @default(cuid())
+  orgId           String
+  fiscalYearId    String
+  submitterUserId String
+
+  fullName    String
+  email       String
+  amount      Decimal @db.Decimal(12, 2)
+  receiptPath String // Supabase Storage object path (private "receipts" bucket)
+  receiptName String // original filename, for display
+
+  budgetAreaId String
+  budgetItemId String
+  description  String
+  eventName    String?
+  purchaseDate DateTime
+
+  paymentMethod PaymentMethod
+  paymentHandle String
+  notes         String?
+
+  status ReimbursementStatus @default(PENDING)
+
+  cycleId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+  submitter    User         @relation("Submitter", fields: [submitterUserId], references: [id])
+  budgetArea   BudgetArea   @relation(fields: [budgetAreaId], references: [id])
+  budgetItem   BudgetItem   @relation(fields: [budgetItemId], references: [id])
+  cycle        ReimbursementCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+
+  statusHistory     ReimbursementStatusHistory[]
+  payment           Payment?
+  ledgerTransaction LedgerTransaction?
+
+  @@index([orgId, status])
+  @@index([submitterUserId])
+  @@index([cycleId])
+}
+
+model ReimbursementStatusHistory {
+  id              String              @id @default(cuid())
+  reimbursementId String
+  fromStatus      ReimbursementStatus?
+  toStatus        ReimbursementStatus
+  changedByUserId String
+  note            String?
+  attachmentPath  String? // e.g. a file the member attached when responding to a Needs Info request
+  attachmentName  String?
+  createdAt       DateTime            @default(now())
+
+  reimbursement Reimbursement @relation(fields: [reimbursementId], references: [id], onDelete: Cascade)
+  changedBy     User          @relation("StatusChangedBy", fields: [changedByUserId], references: [id])
+
+  @@index([reimbursementId])
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  reimbursementId String   @unique
+  paidDate        DateTime
+  transactionId   String
+  recordedByUserId String
+  createdAt       DateTime @default(now())
+
+  reimbursement Reimbursement @relation(fields: [reimbursementId], references: [id], onDelete: Cascade)
+  recordedBy    User          @relation("PaymentRecordedBy", fields: [recordedByUserId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Ledger — auto-generated in Phase 2 from paid reimbursements. Table exists
+// now so Phase 2 is additive (a write path), not a schema change.
+// ---------------------------------------------------------------------------
+
+model LedgerTransaction {
+  id              String   @id @default(cuid())
+  orgId           String
+  reimbursementId String   @unique
+  budgetItemId    String
+  amount          Decimal  @db.Decimal(12, 2)
+  occurredAt      DateTime
+  createdAt       DateTime @default(now())
+
+  organization  Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  reimbursement Reimbursement @relation(fields: [reimbursementId], references: [id], onDelete: Cascade)
+  budgetItem    BudgetItem    @relation(fields: [budgetItemId], references: [id])
+
+  @@index([orgId, occurredAt])
+}
+
+// ---------------------------------------------------------------------------
+// Guest speaker <-> Yale lectureship fund matching. Lectureships are external
+// Yale money (not the org's own budget), so this is reference data + a
+// research/tracking tool — deliberately not wired into Reimbursement/Ledger.
+// ---------------------------------------------------------------------------
+
+model LectureshipFund {
+  id             String   @id @default(cuid())
+  orgId          String
+  name           String
+  purpose        String
+  contact        String
+  isCommonlyUsed Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  organization  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  matchedGuests Guest[]
+
+  @@unique([orgId, name])
+}
+
+enum GuestStatus {
+  PENDING
+  RESEARCHED
+  CONFIRMED
+}
+
+model Guest {
+  id                    String      @id @default(cuid())
+  orgId                 String
+  name                  String
+  debateDate            DateTime
+  status                GuestStatus @default(PENDING)
+  researchSummary       String? // Gemini's background research, plain text
+  matchedLectureshipId  String?
+  matchReasoning        String? // why this fund was picked (by Gemini or the admin)
+  createdByUserId       String
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  organization       Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  matchedLectureship LectureshipFund? @relation(fields: [matchedLectureshipId], references: [id], onDelete: SetNull)
+  createdBy          User             @relation("GuestCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([orgId, debateDate])
+}
