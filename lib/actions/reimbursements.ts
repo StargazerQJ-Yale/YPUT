@@ -1,11 +1,9 @@
 "use server";
 
-import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { getActiveCycle } from "@/lib/cycles";
 import { reimbursementFormSchema } from "@/lib/validations/reimbursement";
@@ -30,8 +28,14 @@ export async function submitReimbursement(
   ) as Record<string, string>;
   const parsed = reimbursementFormSchema.safeParse(raw);
 
-  const receiptFile = formData.get("receipt");
-  const hasReceipt = receiptFile instanceof File && receiptFile.size > 0;
+  // The receipt itself is uploaded directly from the browser to Supabase
+  // Storage (see lib/actions/receipt-upload.ts) before this action runs —
+  // routing the file bytes through this Server Action instead would risk a
+  // 413 from Vercel's ~4.5MB function payload cap. Only the resulting path
+  // reaches us here.
+  const receiptPath = formData.get("receiptPath");
+  const receiptName = formData.get("receiptName");
+  const hasReceipt = typeof receiptPath === "string" && receiptPath.length > 0;
 
   if (!parsed.success || !hasReceipt) {
     const fieldErrors = parsed.success ? {} : parsed.error.flatten().fieldErrors;
@@ -45,7 +49,6 @@ export async function submitReimbursement(
   }
 
   const values = parsed.data;
-  const file = receiptFile as File;
   const org = await getDefaultOrg();
   const fiscalYear = await getActiveFiscalYear();
 
@@ -59,29 +62,6 @@ export async function submitReimbursement(
     };
   }
 
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : undefined;
-  const objectPath = `${org.id}/${user.id}/${randomUUID()}${ext ? `.${ext}` : ""}`;
-
-  const admin = createAdminClient();
-  const arrayBuffer = await file.arrayBuffer();
-  const { error: uploadError } = await admin.storage
-    .from(process.env.SUPABASE_RECEIPTS_BUCKET || "receipts")
-    .upload(objectPath, Buffer.from(arrayBuffer), {
-      contentType: file.type,
-      upsert: false,
-    });
-
-  if (uploadError) {
-    console.error("Receipt upload failed:", uploadError);
-    return {
-      values: rawValues,
-      formError:
-        process.env.NODE_ENV === "production"
-          ? "Failed to upload the receipt. Please try again."
-          : `Failed to upload the receipt: ${uploadError.message}`,
-    };
-  }
-
   const activeCycle = await getActiveCycle(org.id);
 
   const reimbursement = await prisma.reimbursement.create({
@@ -92,8 +72,8 @@ export async function submitReimbursement(
       fullName: values.fullName,
       email: values.email,
       amount: values.amount,
-      receiptPath: objectPath,
-      receiptName: file.name,
+      receiptPath: receiptPath,
+      receiptName: typeof receiptName === "string" && receiptName ? receiptName : "receipt",
       budgetAreaId: values.budgetAreaId,
       budgetItemId: values.budgetItemId,
       description: values.description,
