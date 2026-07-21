@@ -18,7 +18,31 @@ import {
 import { FileDropzone } from "@/components/shared/file-dropzone";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/validations/reimbursement";
 import { submitReimbursement, type SubmitReimbursementState } from "@/lib/actions/reimbursements";
+import { createReceiptUploadUrl } from "@/lib/actions/receipt-upload";
 import { scanReceipt } from "@/lib/actions/receipt-scan";
+import { createClient } from "@/lib/supabase/client";
+
+// Downscales an image client-side before sending it to the AI scan action —
+// keeps the request comfortably under Vercel's ~4.5MB function payload cap
+// regardless of how large the original phone-camera photo is (Groq doesn't
+// need full resolution to read receipt text either).
+async function downscaleImageForScan(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(bitmap, 0, 0, width, height);
+
+  const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+  if (!blob) return file;
+  return new File([blob], file.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+}
 
 type BudgetArea = {
   id: string;
@@ -48,6 +72,7 @@ export function ReimbursementForm({
   );
   const [receiptFile, setReceiptFile] = React.useState<File | null>(null);
   const [scanning, startScanning] = useTransition();
+  const [uploading, setUploading] = React.useState(false);
   const amountRef = React.useRef<HTMLInputElement>(null);
   const purchaseDateRef = React.useRef<HTMLInputElement>(null);
   const eventNameRef = React.useRef<HTMLInputElement>(null);
@@ -55,11 +80,55 @@ export function ReimbursementForm({
 
   const selectedArea = budgetAreas.find((a) => a.id === selectedAreaId);
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    if (receiptFile) {
+      setUploading(true);
+      const uploadUrlResult = await createReceiptUploadUrl(receiptFile.name);
+      if (!uploadUrlResult.success) {
+        toast.error(uploadUrlResult.error);
+        setUploading(false);
+        return;
+      }
+      const supabase = createClient();
+      const { error } = await supabase.storage
+        .from(uploadUrlResult.bucket)
+        .uploadToSignedUrl(uploadUrlResult.path, uploadUrlResult.token, receiptFile, {
+          contentType: receiptFile.type,
+        });
+      setUploading(false);
+      if (error) {
+        toast.error("Failed to upload the receipt. Please try again.");
+        return;
+      }
+      formData.set("receiptPath", uploadUrlResult.path);
+      formData.set("receiptName", receiptFile.name);
+    }
+    formData.delete("receipt");
+    formAction(formData);
+  }
+
   function handleScanReceipt() {
     if (!receiptFile) return;
     startScanning(async () => {
+      let fileToSend = receiptFile;
+      if (receiptFile.type === "application/pdf") {
+        if (receiptFile.size > 4 * 1024 * 1024) {
+          toast.error("This PDF is too large to auto-scan — please fill in the details manually.");
+          return;
+        }
+      } else {
+        try {
+          fileToSend = await downscaleImageForScan(receiptFile);
+        } catch {
+          // fall back to the original file if downscaling fails for any reason
+        }
+      }
+
       const formData = new FormData();
-      formData.append("receipt", receiptFile);
+      formData.append("receipt", fileToSend);
       const result = await scanReceipt(formData);
 
       if (!result.success) {
@@ -88,7 +157,7 @@ export function ReimbursementForm({
   }
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {state.formError && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {state.formError}
@@ -292,9 +361,9 @@ export function ReimbursementForm({
         />
       </div>
 
-      <Button type="submit" disabled={pending} size="lg" className="w-full sm:w-auto">
-        {pending && <Loader2 className="size-4 animate-spin" />}
-        Submit Reimbursement
+      <Button type="submit" disabled={pending || uploading} size="lg" className="w-full sm:w-auto">
+        {(pending || uploading) && <Loader2 className="size-4 animate-spin" />}
+        {uploading ? "Uploading receipt..." : "Submit Reimbursement"}
       </Button>
     </form>
   );
