@@ -3,6 +3,7 @@ import "server-only";
 import Groq from "groq-sdk";
 import type { GroqModel } from "@/lib/groq-models";
 import { searchWeb } from "@/lib/tavily";
+import { extractJsonBlock } from "@/lib/ai-json";
 
 export type LectureshipOption = {
   id: string;
@@ -15,16 +16,6 @@ export type GuestResearchResult = {
   matchedLectureshipId: string | null;
   reasoning: string | null;
 };
-
-function extractJsonBlock(text: string): unknown | null {
-  const match = text.match(/```json\s*([\s\S]*?)\s*```/i) ?? text.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[1] ?? match[0]);
-  } catch {
-    return null;
-  }
-}
 
 /** Researches a guest's public background via Groq, optionally grounded in
  * live Tavily web search results (Groq has no built-in search/grounding tool,

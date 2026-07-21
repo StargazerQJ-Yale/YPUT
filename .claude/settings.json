@@ -40,7 +40,19 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "PowerShell(Stop-Process -Id 62888 -Force -Confirm:$false)",
-      "Bash(curl -s -o /dev/null -w \"users page: %{http_code}\\\\n\" http://localhost:3001/admin/users --max-time 8)"
+      "Bash(curl -s -o /dev/null -w \"users page: %{http_code}\\\\n\" http://localhost:3001/admin/users --max-time 8)",
+      "WebSearch",
+      "WebFetch(domain:console.groq.com)",
+      "Bash(npm view *)",
+      "WebFetch(domain:unjs.io)",
+      "Bash(npm uninstall *)",
+      "Bash(npx tsx *)",
+      "Bash(cp \"C:\\\\Users\\\\Lenovo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Lenovo-Desktop-treasury-app\\\\c21ace8b-499e-4107-a1a9-92c658dd898b\\\\scratchpad\\\\test-receipt-scan.ts\" \"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\treasury_app\\\\scratch-test-receipt-scan.ts\")",
+      "Bash(rm -f \"c:\\\\Users\\\\Lenovo\\\\Desktop\\\\treasury_app\\\\scratch-test-receipt-scan.ts\")",
+      "Bash(rm -f \"C:\\\\Users\\\\Lenovo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Lenovo-Desktop-treasury-app\\\\c21ace8b-499e-4107-a1a9-92c658dd898b\\\\scratchpad\\\\test-receipt-scan.ts\" \"C:\\\\Users\\\\Lenovo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-Lenovo-Desktop-treasury-app\\\\c21ace8b-499e-4107-a1a9-92c658dd898b\\\\scratchpad\\\\pdf-render-test.png\")",
+      "PowerShell(Stop-Process -Id 62100 -Force -Confirm:$false)",
+      "Bash(curl -s -o /dev/null -w \"submit page: %{http_code}\\\\n\" http://localhost:3001/submit --max-time 8)",
+      "PowerShell(Stop-Process -Id 9756 -Force -Confirm:$false)"
     ]
   }
 }
