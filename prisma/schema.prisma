@@ -86,6 +86,7 @@ model FundDeposit {
 enum UserRole {
   MEMBER
   TREASURER
+  ADMIN
   SUPER_ADMIN
 }
 

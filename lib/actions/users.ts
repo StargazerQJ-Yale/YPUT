@@ -3,13 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { requireSuperAdmin } from "@/lib/auth";
+import { requireSuperAdmin, requireRoleManager } from "@/lib/auth";
 import { DEFAULT_ADMIN_PIN, hashPin } from "@/lib/pin";
+import { ALL_ROLES, ROLE_PERMISSIONS } from "@/lib/role-permissions";
 import type { UserRole } from "@/lib/generated/prisma/client";
 
 export type ActionResult = { success: true } | { success: false; error: string };
-
-const VALID_ROLES: UserRole[] = ["MEMBER", "TREASURER", "SUPER_ADMIN"];
 
 const profileSchema = z.object({
   fullName: z.string().trim().min(1, "Name is required").max(200),
@@ -42,10 +41,14 @@ export async function updateUserProfile(
 }
 
 export async function updateUserRole(targetUserId: string, role: UserRole): Promise<ActionResult> {
-  const currentUser = await requireSuperAdmin();
+  const currentUser = await requireRoleManager();
+  const permissions = ROLE_PERMISSIONS[currentUser.role] ?? {
+    assignableRoles: [],
+    manageableCurrentRoles: [],
+  };
 
-  if (!VALID_ROLES.includes(role)) {
-    return { success: false, error: "Invalid role." };
+  if (!ALL_ROLES.includes(role) || !permissions.assignableRoles.includes(role)) {
+    return { success: false, error: "You don't have permission to assign that role." };
   }
   if (targetUserId === currentUser.id) {
     return { success: false, error: "You can't change your own role." };
@@ -53,9 +56,17 @@ export async function updateUserRole(targetUserId: string, role: UserRole): Prom
 
   const target = await prisma.user.findUnique({
     where: { id: targetUserId },
-    select: { passwordHash: true },
+    select: { role: true, passwordHash: true },
   });
-  const needsDefaultPin = (role === "TREASURER" || role === "SUPER_ADMIN") && !target?.passwordHash;
+  if (!target) {
+    return { success: false, error: "User not found." };
+  }
+  if (!permissions.manageableCurrentRoles.includes(target.role)) {
+    return { success: false, error: "You don't have permission to change this user's role." };
+  }
+
+  const needsDefaultPin =
+    (role === "TREASURER" || role === "ADMIN" || role === "SUPER_ADMIN") && !target.passwordHash;
 
   await prisma.user.update({
     where: { id: targetUserId },

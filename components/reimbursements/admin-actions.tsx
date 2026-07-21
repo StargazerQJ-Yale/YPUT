@@ -38,7 +38,7 @@ import {
   deleteReimbursement,
   type ActionResult,
 } from "@/lib/actions/admin-reimbursements";
-import type { ReimbursementStatus } from "@/lib/generated/prisma/client";
+import type { ReimbursementStatus, UserRole } from "@/lib/generated/prisma/client";
 
 function useRunAction() {
   const router = useRouter();
@@ -240,7 +240,7 @@ export function AdminActions({
   reimbursementId: string;
   status: ReimbursementStatus;
   editDialog?: React.ReactNode;
-  viewerRole: "TREASURER" | "SUPER_ADMIN";
+  viewerRole: UserRole;
 }) {
   const canApprove = status === "PENDING" || status === "NEEDS_INFO";
   const canReject = status === "PENDING" || status === "NEEDS_INFO" || status === "APPROVED";

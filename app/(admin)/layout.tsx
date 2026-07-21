@@ -20,10 +20,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/ledger", label: "Ledger", icon: "ledger" },
     { href: "/admin/analytics", label: "Analytics", icon: "analytics" },
     { href: "/admin/guests", label: "Guests", icon: "guests" },
+    ...(user.role === "ADMIN" || user.role === "SUPER_ADMIN"
+      ? ([{ href: "/admin/users", label: "Users", icon: "users" }] as NavItem[])
+      : []),
     ...(user.role === "SUPER_ADMIN"
       ? ([
           { href: "/admin/cycles", label: "Cycles", icon: "cycles" },
-          { href: "/admin/users", label: "Users", icon: "users" },
           { href: "/admin/settings", label: "Settings", icon: "settings" },
         ] as NavItem[])
       : []),

@@ -8,6 +8,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -28,9 +29,13 @@ type Lectureship = { id: string; name: string; isCommonlyUsed: boolean };
 function ResearchOptions({
   model,
   onModelChange,
+  useWebSearch,
+  onUseWebSearchChange,
 }: {
   model: GroqModel;
   onModelChange: (model: GroqModel) => void;
+  useWebSearch: boolean;
+  onUseWebSearchChange: (value: boolean) => void;
 }) {
   return (
     <div className="w-full space-y-3 rounded-lg border p-3 text-left">
@@ -52,9 +57,17 @@ function ResearchOptions({
             ))}
           </SelectContent>
         </Select>
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          Free tier, no live web search — the model answers from its own training data.
-        </p>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <Label htmlFor="use-web-search">Live web search</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {useWebSearch
+              ? "Searches the web (via Tavily) for current info, then Groq summarizes it."
+              : "Off — the model answers from its own training data only."}
+          </p>
+        </div>
+        <Switch id="use-web-search" checked={useWebSearch} onCheckedChange={onUseWebSearchChange} />
       </div>
     </div>
   );
@@ -78,10 +91,11 @@ export function GuestResearchPanel({
   const router = useRouter();
   const [researching, startResearching] = useTransition();
   const [model, setModel] = React.useState<GroqModel>("llama-3.3-70b-versatile");
+  const [useWebSearch, setUseWebSearch] = React.useState(true);
 
   function handleResearch() {
     startResearching(async () => {
-      const result = await researchGuest(guestId, { model });
+      const result = await researchGuest(guestId, { model, useWebSearch });
       if (result.success) {
         toast.success("Research complete");
         router.refresh();
@@ -98,7 +112,12 @@ export function GuestResearchPanel({
         <p className="max-w-sm text-sm text-muted-foreground">
           Not researched yet. AI can look this guest up and suggest a lectureship fund.
         </p>
-        <ResearchOptions model={model} onModelChange={setModel} />
+        <ResearchOptions
+          model={model}
+          onModelChange={setModel}
+          useWebSearch={useWebSearch}
+          onUseWebSearchChange={setUseWebSearch}
+        />
         <Button onClick={handleResearch} disabled={researching}>
           {researching && <Loader2 className="size-4 animate-spin" />}
           Research with AI
@@ -132,7 +151,12 @@ export function GuestResearchPanel({
         lectureships={lectureships}
       />
 
-      <ResearchOptions model={model} onModelChange={setModel} />
+      <ResearchOptions
+        model={model}
+        onModelChange={setModel}
+        useWebSearch={useWebSearch}
+        onUseWebSearchChange={setUseWebSearch}
+      />
       <Button variant="outline" size="sm" onClick={handleResearch} disabled={researching}>
         {researching && <Loader2 className="size-4 animate-spin" />}
         Re-research
