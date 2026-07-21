@@ -2,6 +2,7 @@ import "server-only";
 
 import Groq from "groq-sdk";
 import type { GroqModel } from "@/lib/groq-models";
+import { searchWeb } from "@/lib/tavily";
 
 export type LectureshipOption = {
   id: string;
@@ -25,15 +26,17 @@ function extractJsonBlock(text: string): unknown | null {
   }
 }
 
-/** Researches a guest's public background via Groq (free tier, no live web
- * search — the model reasons from its own training data only), then asks it
- * to pick the best-fitting lectureship fund from the supplied list. Falls
- * back to returning the raw text as the summary (with no match) if the
- * model's output can't be parsed, rather than throwing. */
+/** Researches a guest's public background via Groq, optionally grounded in
+ * live Tavily web search results (Groq has no built-in search/grounding tool,
+ * unlike Gemini — so when `useWebSearch` is on, we fetch real results
+ * ourselves and hand them to the model as context), then asks it to pick the
+ * best-fitting lectureship fund from the supplied list. Falls back to
+ * returning the raw text as the summary (with no match) if the model's
+ * output can't be parsed, rather than throwing. */
 export async function researchGuestAndMatchLectureship(
   guestName: string,
   lectureships: LectureshipOption[],
-  options: { model: GroqModel },
+  options: { model: GroqModel; useWebSearch?: boolean },
 ): Promise<GuestResearchResult> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
@@ -46,11 +49,31 @@ export async function researchGuestAndMatchLectureship(
     .map((fund) => `- id: ${fund.id}\n  name: ${fund.name}\n  purpose: ${fund.purpose}`)
     .join("\n");
 
+  let searchContext = "";
+  if (options.useWebSearch) {
+    try {
+      const results = await searchWeb(guestName);
+      if (results.length > 0) {
+        searchContext = `\nLive web search results for "${guestName}":\n${results
+          .map((r, i) => `${i + 1}. ${r.title} (${r.url})\n   ${r.content}`)
+          .join("\n")}\n`;
+      }
+    } catch (error) {
+      console.error("Tavily search failed, falling back to knowledge-only research:", error);
+    }
+  }
+
+  const researchInstruction = searchContext
+    ? `Use the live web search results below (not just your own training data) to research this person, since they may include recent or obscure information you don't already know.\n${searchContext}`
+    : `Based on what you already know about this person (no live web search available — say so plainly in the summary if you're not confident who they are), describe their occupation, notable work, and any connection to journalism, literature, public affairs, government, letter writing, or Harvard.`;
+
   const prompt = `You are helping a Yale student organization pick the right lectureship fund to request reimbursement for a guest speaker's costs (travel, dinner, etc.).
 
 Guest name: "${guestName}"
 
-Based on what you already know about this person (no live web search available — say so plainly in the summary if you're not confident who they are), describe their occupation, notable work, and any connection to journalism, literature, public affairs, government, letter writing, or Harvard.
+${researchInstruction}
+
+Describe their occupation, notable work, and any connection to journalism, literature, public affairs, government, letter writing, or Harvard.
 
 Available lectureship funds (pick the single best fit by id):
 ${fundList}

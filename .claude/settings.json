@@ -32,7 +32,12 @@
       "Bash(curl -s -o /dev/null -w \"guests list: %{http_code}\\\\n\" http://localhost:3001/admin/guests --max-time 8)",
       "Bash(curl -s -o /dev/null -w \"guest detail: %{http_code}\\\\n\" http://localhost:3001/admin/guests/test --max-time 8)",
       "PowerShell(Stop-Process -Id 60392 -Force -ErrorAction SilentlyContinue)",
-      "PowerShell(Stop-Process -Id 9536 -Force -ErrorAction SilentlyContinue)"
+      "PowerShell(Stop-Process -Id 9536 -Force -ErrorAction SilentlyContinue)",
+      "Bash(npm install *)",
+      "PowerShell(Stop-Process -Id 47680 -Force -Confirm:$false)",
+      "Bash(git add *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import type { User, UserRole } from "@/lib/generated/prisma/client";
 
-const ADMIN_ROLES: UserRole[] = ["TREASURER", "SUPER_ADMIN"];
+const ADMIN_ROLES: UserRole[] = ["TREASURER", "ADMIN", "SUPER_ADMIN"];
+const ROLE_MANAGER_ROLES: UserRole[] = ["ADMIN", "SUPER_ADMIN"];
 
 /** Returns the signed-in user's app-level profile, or null if not signed in. */
 export async function getCurrentUser(): Promise<User | null> {
@@ -39,4 +40,10 @@ export async function requireAdmin(): Promise<User> {
 
 export async function requireSuperAdmin(): Promise<User> {
   return requireRole(["SUPER_ADMIN"]);
+}
+
+/** Admin or Super Admin — the two roles allowed to manage other users' roles
+ * (each restricted to a different assignable-roles ceiling, see lib/actions/users.ts). */
+export async function requireRoleManager(): Promise<User> {
+  return requireRole(ROLE_MANAGER_ROLES);
 }

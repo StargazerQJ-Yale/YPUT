@@ -10,14 +10,20 @@ import {
 import { RoleSelect } from "@/components/admin/role-select";
 import { EditUserDialog } from "@/components/admin/edit-user-dialog";
 import { ResetPinButton } from "@/components/admin/reset-pin-button";
-import { requireSuperAdmin } from "@/lib/auth";
+import { requireRoleManager } from "@/lib/auth";
 import { getDefaultOrg } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
+import { ROLE_PERMISSIONS } from "@/lib/role-permissions";
 
 export default async function UsersPage() {
-  const currentUser = await requireSuperAdmin();
+  const currentUser = await requireRoleManager();
   const org = await getDefaultOrg();
+  const permissions = ROLE_PERMISSIONS[currentUser.role] ?? {
+    assignableRoles: [],
+    manageableCurrentRoles: [],
+  };
+  const isSuperAdmin = currentUser.role === "SUPER_ADMIN";
 
   const users = await prisma.user.findMany({
     where: { orgId: org.id },
@@ -29,8 +35,7 @@ export default async function UsersPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
         <p className="text-sm text-muted-foreground">
-          Anyone who signs in becomes a Member automatically. Promote trusted members to Treasurer or
-          Super Admin here.
+          Anyone who signs in becomes a Member automatically. Promote trusted members from here.
         </p>
       </div>
 
@@ -52,6 +57,8 @@ export default async function UsersPage() {
                 .slice(0, 2)
                 .join("")
                 .toUpperCase();
+              const canManageThisUser =
+                user.id !== currentUser.id && permissions.manageableCurrentRoles.includes(user.role);
 
               return (
                 <TableRow key={user.id}>
@@ -71,19 +78,26 @@ export default async function UsersPage() {
                     {formatDate(user.createdAt)}
                   </TableCell>
                   <TableCell>
-                    <RoleSelect userId={user.id} role={user.role} disabled={user.id === currentUser.id} />
+                    <RoleSelect
+                      userId={user.id}
+                      role={user.role}
+                      assignableRoles={permissions.assignableRoles}
+                      disabled={!canManageThisUser}
+                    />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <EditUserDialog
-                        userId={user.id}
-                        currentFullName={user.fullName}
-                        currentEmail={user.email}
-                      />
-                      {user.role !== "MEMBER" && (
-                        <ResetPinButton userId={user.id} name={user.fullName ?? user.email} />
-                      )}
-                    </div>
+                    {isSuperAdmin && (
+                      <div className="flex items-center gap-1">
+                        <EditUserDialog
+                          userId={user.id}
+                          currentFullName={user.fullName}
+                          currentEmail={user.email}
+                        />
+                        {user.role !== "MEMBER" && (
+                          <ResetPinButton userId={user.id} name={user.fullName ?? user.email} />
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               );

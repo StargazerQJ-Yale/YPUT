@@ -36,6 +36,7 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { ChangePinDialog } from "@/components/admin/change-pin-dialog";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/actions/auth";
+import { ROLE_LABELS } from "@/lib/role-permissions";
 
 // Icons are resolved by name (not passed as component references) because
 // component/function values can't cross the Server -> Client prop boundary.
@@ -65,12 +66,6 @@ type AppShellUser = {
   email: string;
   avatarUrl: string | null;
   role: string;
-};
-
-const ROLE_LABELS: Record<string, string> = {
-  MEMBER: "Member",
-  TREASURER: "Treasurer",
-  SUPER_ADMIN: "Super Admin",
 };
 
 function NavLinks({ navItems, onNavigate }: { navItems: NavItem[]; onNavigate?: () => void }) {
@@ -104,7 +99,7 @@ function NavLinks({ navItems, onNavigate }: { navItems: NavItem[]; onNavigate?: 
 
 function UserMenu({ user }: { user: AppShellUser }) {
   const [pinDialogOpen, setPinDialogOpen] = React.useState(false);
-  const isAdmin = user.role === "TREASURER" || user.role === "SUPER_ADMIN";
+  const isAdmin = user.role === "TREASURER" || user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 
   const initials = (user.fullName || user.email)
     .split(" ")

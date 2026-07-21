@@ -10,30 +10,34 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { updateUserRole } from "@/lib/actions/users";
+import { ROLE_LABELS } from "@/lib/role-permissions";
 import type { UserRole } from "@/lib/generated/prisma/client";
-
-const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
-  { value: "MEMBER", label: "Member" },
-  { value: "TREASURER", label: "Treasurer" },
-  { value: "SUPER_ADMIN", label: "Super Admin" },
-];
 
 export function RoleSelect({
   userId,
   role,
+  assignableRoles,
   disabled,
 }: {
   userId: string;
   role: UserRole;
+  assignableRoles: UserRole[];
   disabled?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
 
+  // The current role might not be one the viewer is allowed to assign (e.g. a
+  // Super Admin row shown to an Admin viewer) — still show it as the current
+  // value, just don't let it be picked from the dropdown's own option list.
+  const options = assignableRoles.includes(role)
+    ? assignableRoles
+    : [role, ...assignableRoles];
+
   return (
     <Select
       value={role}
-      disabled={disabled || pending}
-      items={ROLE_OPTIONS}
+      disabled={disabled || pending || assignableRoles.length === 0}
+      items={options.map((value) => ({ value, label: ROLE_LABELS[value] ?? value }))}
       onValueChange={(value) =>
         startTransition(async () => {
           const result = await updateUserRole(userId, value as UserRole);
@@ -46,9 +50,9 @@ export function RoleSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {ROLE_OPTIONS.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value}>
-            {opt.label}
+        {options.map((value) => (
+          <SelectItem key={value} value={value}>
+            {ROLE_LABELS[value] ?? value}
           </SelectItem>
         ))}
       </SelectContent>

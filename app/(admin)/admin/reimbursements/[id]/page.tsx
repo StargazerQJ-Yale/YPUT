@@ -49,7 +49,7 @@ export default async function AdminReimbursementDetailPage({
         <AdminActions
           reimbursementId={reimbursement.id}
           status={reimbursement.status}
-          viewerRole={viewer.role as "TREASURER" | "SUPER_ADMIN"}
+          viewerRole={viewer.role}
           editDialog={
             <EditReimbursementDialog
               reimbursementId={reimbursement.id}

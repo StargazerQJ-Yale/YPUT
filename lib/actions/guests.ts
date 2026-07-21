@@ -40,7 +40,7 @@ export async function createGuest(_prevState: ActionResult | null, formData: For
 
 export async function researchGuest(
   guestId: string,
-  options: { model: GroqModel },
+  options: { model: GroqModel; useWebSearch?: boolean },
 ): Promise<ActionResult> {
   await requireAdmin();
   const org = await getDefaultOrg();
