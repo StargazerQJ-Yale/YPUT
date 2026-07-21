@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSignedReceiptUrl, withHistoryAttachmentUrls } from "@/lib/storage";
+import { getPublicIdentity } from "@/lib/identity";
 import { ReimbursementDetail } from "@/components/reimbursements/reimbursement-detail";
 import { MemberActions } from "@/components/reimbursements/member-actions";
 
@@ -30,11 +31,19 @@ export default async function MemberReimbursementDetailPage({
   }
 
   const receiptUrl = await getSignedReceiptUrl(reimbursement.receiptPath);
-  const statusHistory = await withHistoryAttachmentUrls(reimbursement.statusHistory);
+  const statusHistoryWithAttachments = await withHistoryAttachmentUrls(reimbursement.statusHistory);
+  const statusHistory = statusHistoryWithAttachments.map((entry) => ({
+    ...entry,
+    changedBy: getPublicIdentity(entry.changedBy, user),
+  }));
+  const payment = reimbursement.payment
+    ? { ...reimbursement.payment, recordedBy: getPublicIdentity(reimbursement.payment.recordedBy, user) }
+    : null;
+  const submitter = getPublicIdentity(reimbursement.submitter, user);
 
   return (
     <ReimbursementDetail
-      reimbursement={{ ...reimbursement, statusHistory }}
+      reimbursement={{ ...reimbursement, submitter, statusHistory, payment }}
       receiptUrl={receiptUrl}
       actions={<MemberActions reimbursementId={reimbursement.id} status={reimbursement.status} />}
     />

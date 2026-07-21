@@ -12,16 +12,23 @@ import type {
   BudgetArea,
   BudgetItem,
   ReimbursementCycle,
-  User,
 } from "@/lib/generated/prisma/client";
+
+// fullName/email here are already redacted server-side (see lib/identity.ts)
+// where the viewer isn't allowed to see the real identity — never the raw
+// User record, so a Super Admin's or test account's real info can't leak.
+type PublicIdentity = { fullName: string | null; email: string };
 
 export type ReimbursementDetailData = Reimbursement & {
   budgetArea: BudgetArea;
   budgetItem: BudgetItem;
   cycle: ReimbursementCycle | null;
-  submitter: User;
-  statusHistory: (ReimbursementStatusHistory & { changedBy: User; attachmentUrl?: string | null })[];
-  payment: (Payment & { recordedBy: User }) | null;
+  submitter: PublicIdentity;
+  statusHistory: (ReimbursementStatusHistory & {
+    changedBy: PublicIdentity;
+    attachmentUrl?: string | null;
+  })[];
+  payment: (Payment & { recordedBy: PublicIdentity }) | null;
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
