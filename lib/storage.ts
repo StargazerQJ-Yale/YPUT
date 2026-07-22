@@ -16,6 +16,18 @@ export async function getSignedReceiptUrl(path: string): Promise<string | null> 
   return data.signedUrl;
 }
 
+/** Downloads a receipt's raw bytes (e.g. to bundle into a ZIP export) —
+ * distinct from getSignedReceiptUrl, which just hands out a link for the
+ * browser to fetch directly. Returns null if the object can't be read
+ * rather than throwing, so one missing/corrupt receipt doesn't fail an
+ * entire export. */
+export async function downloadReceiptBuffer(path: string): Promise<Buffer | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin.storage.from(BUCKET).download(path);
+  if (error || !data) return null;
+  return Buffer.from(await data.arrayBuffer());
+}
+
 export function isImagePath(nameOrPath: string) {
   // Excludes TIFF: accepted for upload, but not natively renderable in <img>
   // by most browsers, so it's shown as a generic file link instead (like PDF).

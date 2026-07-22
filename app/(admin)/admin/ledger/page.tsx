@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ClickableTableRow } from "@/components/shared/clickable-table-row";
 import { ExportMenu } from "@/components/admin/export-menu";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { getLedgerTransactions } from "@/lib/ledger";
@@ -61,7 +62,7 @@ export default async function LedgerPage() {
               </TableHeader>
               <TableBody>
                 {transactions.map((t) => (
-                  <TableRow key={t.id} className="cursor-pointer">
+                  <ClickableTableRow key={t.id} href={`/admin/reimbursements/${t.reimbursementId}`}>
                     <TableCell className="whitespace-nowrap text-sm">
                       <Link href={`/admin/reimbursements/${t.reimbursementId}`} className="block">
                         {formatDate(t.occurredAt)}
@@ -80,7 +81,7 @@ export default async function LedgerPage() {
                     <TableCell className="text-right font-medium tabular-nums">
                       {formatCurrency(t.amount)}
                     </TableCell>
-                  </TableRow>
+                  </ClickableTableRow>
                 ))}
               </TableBody>
             </Table>

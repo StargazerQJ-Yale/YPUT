@@ -21,6 +21,7 @@ export default async function AdminReimbursementDetailPage({
       budgetArea: true,
       budgetItem: true,
       cycle: true,
+      guest: { select: { id: true, name: true } },
       submitter: true,
       statusHistory: { orderBy: { createdAt: "asc" }, include: { changedBy: true } },
       payment: { include: { recordedBy: true } },
@@ -36,6 +37,12 @@ export default async function AdminReimbursementDetailPage({
     where: { fiscalYearId: reimbursement.fiscalYearId },
     orderBy: { name: "asc" },
     include: { budgetItems: { orderBy: { name: "asc" }, select: { id: true, name: true } } },
+  });
+
+  const guests = await prisma.guest.findMany({
+    where: { orgId: reimbursement.orgId },
+    orderBy: { debateDate: "desc" },
+    select: { id: true, name: true },
   });
 
   const receiptUrl = await getSignedReceiptUrl(reimbursement.receiptPath);
@@ -63,6 +70,7 @@ export default async function AdminReimbursementDetailPage({
             <EditReimbursementDialog
               reimbursementId={reimbursement.id}
               budgetAreas={budgetAreas}
+              guests={guests}
               current={{
                 fullName: reimbursement.fullName,
                 email: reimbursement.email,
@@ -75,6 +83,7 @@ export default async function AdminReimbursementDetailPage({
                 paymentMethod: reimbursement.paymentMethod,
                 paymentHandle: reimbursement.paymentHandle,
                 notes: reimbursement.notes,
+                guestId: reimbursement.guestId,
               }}
             />
           }

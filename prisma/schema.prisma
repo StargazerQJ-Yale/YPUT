@@ -221,6 +221,10 @@ model Reimbursement {
   status ReimbursementStatus @default(PENDING)
 
   cycleId String?
+  // Which guest speaker's visit this expense is for, set by Treasurer/Admin
+  // (not the submitting member) — lets a guest's page show all its expenses
+  // and export them for the Yale lectureship fund application paperwork.
+  guestId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -231,6 +235,7 @@ model Reimbursement {
   budgetArea   BudgetArea   @relation(fields: [budgetAreaId], references: [id])
   budgetItem   BudgetItem   @relation(fields: [budgetItemId], references: [id])
   cycle        ReimbursementCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+  guest        Guest?              @relation(fields: [guestId], references: [id], onDelete: SetNull)
 
   statusHistory     ReimbursementStatusHistory[]
   payment           Payment?
@@ -239,6 +244,7 @@ model Reimbursement {
   @@index([orgId, status])
   @@index([submitterUserId])
   @@index([cycleId])
+  @@index([guestId])
 }
 
 model ReimbursementStatusHistory {
@@ -334,6 +340,7 @@ model Guest {
   organization       Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
   matchedLectureship LectureshipFund? @relation(fields: [matchedLectureshipId], references: [id], onDelete: SetNull)
   createdBy          User             @relation("GuestCreatedBy", fields: [createdByUserId], references: [id])
+  reimbursements     Reimbursement[]
 
   @@index([orgId, debateDate])
 }

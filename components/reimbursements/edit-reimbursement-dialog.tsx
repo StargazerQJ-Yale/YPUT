@@ -45,19 +45,25 @@ type CurrentValues = {
   paymentMethod: string;
   paymentHandle: string;
   notes: string | null;
+  guestId: string | null;
 };
+
+type Guest = { id: string; name: string };
 
 export function EditReimbursementDialog({
   reimbursementId,
   current,
   budgetAreas,
+  guests,
 }: {
   reimbursementId: string;
   current: CurrentValues;
   budgetAreas: BudgetArea[];
+  guests: Guest[];
 }) {
   const [open, setOpen] = React.useState(false);
   const [selectedAreaId, setSelectedAreaId] = React.useState(current.budgetAreaId);
+  const [selectedGuestId, setSelectedGuestId] = React.useState(current.guestId ?? "");
   const [state, formAction, pending] = useActionState(
     updateReimbursement.bind(null, reimbursementId),
     null,
@@ -191,6 +197,31 @@ export function EditReimbursementDialog({
               defaultValue={current.eventName ?? ""}
               className="mt-1.5"
             />
+          </div>
+
+          <div>
+            <Label htmlFor={`${formId}-guestId`}>Related Guest (optional)</Label>
+            <Select
+              name="guestId"
+              value={selectedGuestId}
+              onValueChange={(value) => setSelectedGuestId(value ?? "")}
+              items={[{ value: "", label: "— No guest —" }, ...guests.map((g) => ({ value: g.id, label: g.name }))]}
+            >
+              <SelectTrigger id={`${formId}-guestId`} className="mt-1.5 w-full">
+                <SelectValue placeholder="No guest linked" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">— No guest —</SelectItem>
+                {guests.map((guest) => (
+                  <SelectItem key={guest.id} value={guest.id}>
+                    {guest.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Links this expense to a guest speaker&apos;s page for expense reporting.
+            </p>
           </div>
 
           <div>
