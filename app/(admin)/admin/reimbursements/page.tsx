@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ClickableTableRow } from "@/components/shared/clickable-table-row";
 import { ReimbursementsFilterBar } from "@/components/admin/reimbursements-filter-bar";
 import { prisma } from "@/lib/prisma";
 import { getDefaultOrg } from "@/lib/org";
@@ -56,7 +57,7 @@ export default async function AdminReimbursementsPage({
   const reimbursements = await prisma.reimbursement.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    include: { budgetArea: true, budgetItem: true, cycle: true },
+    include: { budgetArea: true, budgetItem: true, guest: { select: { name: true } } },
     take: 200,
   });
 
@@ -80,7 +81,7 @@ export default async function AdminReimbursementsPage({
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Budget</TableHead>
-                <TableHead>Cycle</TableHead>
+                <TableHead>Guest</TableHead>
                 <TableHead>Purchase Date</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Status</TableHead>
@@ -88,7 +89,7 @@ export default async function AdminReimbursementsPage({
             </TableHeader>
             <TableBody>
               {reimbursements.map((r) => (
-                <TableRow key={r.id} className="cursor-pointer">
+                <ClickableTableRow key={r.id} href={`/admin/reimbursements/${r.id}`}>
                   <TableCell className="whitespace-normal">
                     <Link href={`/admin/reimbursements/${r.id}`} className="block">
                       <p className="font-medium">{r.fullName}</p>
@@ -100,7 +101,7 @@ export default async function AdminReimbursementsPage({
                     <p className="text-xs text-muted-foreground">{r.budgetItem.name}</p>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {r.cycle?.label ?? "Unassigned"}
+                    {r.guest?.name ?? "Unassigned"}
                   </TableCell>
                   <TableCell className="text-sm">{formatDate(r.purchaseDate)}</TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
@@ -109,7 +110,7 @@ export default async function AdminReimbursementsPage({
                   <TableCell>
                     <StatusBadge status={r.status} />
                   </TableCell>
-                </TableRow>
+                </ClickableTableRow>
               ))}
             </TableBody>
           </Table>

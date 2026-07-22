@@ -95,7 +95,7 @@ export async function updateReimbursement(
 
   const current = await prisma.reimbursement.findUnique({
     where: { id: reimbursementId },
-    select: { status: true },
+    select: { status: true, orgId: true },
   });
   if (!current) return { success: false, error: "Reimbursement not found." };
 
@@ -119,6 +119,16 @@ export async function updateReimbursement(
     return { success: false, error: "Selected budget category doesn't belong to that budget area." };
   }
 
+  const rawGuestId = formData.get("guestId");
+  let guestId: string | null = null;
+  if (typeof rawGuestId === "string" && rawGuestId) {
+    const guest = await prisma.guest.findFirst({ where: { id: rawGuestId, orgId: current.orgId } });
+    if (!guest) {
+      return { success: false, error: "Selected guest doesn't belong to this organization." };
+    }
+    guestId = guest.id;
+  }
+
   await prisma.$transaction([
     prisma.reimbursement.update({
       where: { id: reimbursementId },
@@ -134,6 +144,7 @@ export async function updateReimbursement(
         paymentMethod: values.paymentMethod,
         paymentHandle: values.paymentHandle,
         notes: values.notes || null,
+        guestId,
       },
     }),
     prisma.reimbursementStatusHistory.create({
@@ -153,6 +164,8 @@ export async function updateReimbursement(
   revalidatePath("/admin/budgets");
   revalidatePath(`/reimbursements/${reimbursementId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/admin/guests");
+  if (guestId) revalidatePath(`/admin/guests/${guestId}`);
 
   return { success: true };
 }

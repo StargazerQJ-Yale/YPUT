@@ -23,6 +23,7 @@ export type ReimbursementDetailData = Reimbursement & {
   budgetArea: BudgetArea;
   budgetItem: BudgetItem;
   cycle: ReimbursementCycle | null;
+  guest: { id: string; name: string } | null;
   submitter: PublicIdentity;
   statusHistory: (ReimbursementStatusHistory & {
     changedBy: PublicIdentity;
@@ -97,6 +98,7 @@ export function ReimbursementDetail({
               <Field label="Email">{r.email}</Field>
               <Field label="Budget Area">{r.budgetArea.name}</Field>
               <Field label="Budget Category">{r.budgetItem.name}</Field>
+              {r.guest && <Field label="Related Guest">{r.guest.name}</Field>}
               <Field label="Date of Purchase">{formatDate(r.purchaseDate)}</Field>
               <Field label="Payment Method">{PAYMENT_METHOD_LABELS[r.paymentMethod]}</Field>
               <Field label="Payment Handle">{r.paymentHandle}</Field>

@@ -20,6 +20,7 @@ export default async function MemberReimbursementDetailPage({
       budgetArea: true,
       budgetItem: true,
       cycle: true,
+      guest: { select: { id: true, name: true } },
       submitter: true,
       statusHistory: { orderBy: { createdAt: "asc" }, include: { changedBy: true } },
       payment: { include: { recordedBy: true } },
