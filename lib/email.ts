@@ -1,20 +1,11 @@
 import "server-only";
 
-import { Resend } from "resend";
 import { formatCurrency } from "@/lib/format";
 import type { Prisma, ReimbursementStatus } from "@/lib/generated/prisma/client";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-const FROM = process.env.RESEND_FROM_EMAIL || "Treasury Portal <onboarding@resend.dev>";
-
-let client: Resend | null = null;
-
-function getClient(): Resend | null {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return null;
-  if (!client) client = new Resend(apiKey);
-  return client;
-}
+const SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || "";
+const SENDER_NAME = process.env.BREVO_SENDER_NAME || "Treasury Portal";
 
 function escapeHtml(input: string): string {
   return input
@@ -37,16 +28,37 @@ function wrapEmail(title: string, bodyHtml: string): string {
 }
 
 // Never throws — a failed/unconfigured email must not break the reimbursement
-// action that triggered it. Silently no-ops (with a log) if RESEND_API_KEY
-// isn't set, so the app works before email is configured.
+// action that triggered it. Silently no-ops (with a log) if BREVO_API_KEY or
+// BREVO_SENDER_EMAIL isn't set, so the app works before email is configured.
 async function sendEmail(to: string | string[], subject: string, html: string) {
-  const resend = getClient();
-  if (!resend) {
-    console.warn(`RESEND_API_KEY not set — skipping email "${subject}"`);
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey || !SENDER_EMAIL) {
+    console.warn(`BREVO_API_KEY or BREVO_SENDER_EMAIL not set — skipping email "${subject}"`);
     return;
   }
+
+  const recipients = Array.isArray(to) ? to : [to];
+  if (recipients.length === 0) return;
+
   try {
-    await resend.emails.send({ from: FROM, to, subject, html });
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: SENDER_NAME, email: SENDER_EMAIL },
+        to: recipients.map((email) => ({ email })),
+        subject,
+        htmlContent: html,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`Brevo email send failed (${response.status}):`, await response.text());
+    }
   } catch (error) {
     console.error("Failed to send email:", error);
   }

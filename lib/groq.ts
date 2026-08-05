@@ -69,10 +69,11 @@ Describe their occupation, notable work, and any connection to journalism, liter
 Available lectureship funds (pick the single best fit by id):
 ${fundList}
 
-Priority rule: if the guest is a Harvard graduate or a Harvard faculty member, prefer matching
-them to the Harvard Lectureship over any other fund (including catch-all funds like "any topic"
-that technically also apply) — Harvard is the rarest fund to have a legitimate match for, so use
-it whenever it genuinely fits, rather than defaulting to a broader fund.
+Priority rule: if the guest is a current Harvard student, a former Harvard student (any degree,
+graduated or not), or Harvard faculty, prefer matching them to the Harvard Lectureship over any
+other fund (including catch-all funds like "any topic" that technically also apply) — Harvard is
+the rarest fund to have a legitimate match for, so use it whenever it genuinely fits, rather than
+defaulting to a broader fund.
 
 Respond with ONLY a fenced json code block in exactly this shape, no other text outside the block:
 \`\`\`json
