@@ -28,7 +28,7 @@ const LECTURESHIPS: {
   },
   {
     name: "Harvard Lectureship",
-    purpose: "Lectures by distinguished Harvard graduates and faculty.",
+    purpose: "Lectures by current or former Harvard students, or Harvard faculty.",
     contact: "Ryan Croteau, Associate Director of University Events",
     isCommonlyUsed: true,
   },
