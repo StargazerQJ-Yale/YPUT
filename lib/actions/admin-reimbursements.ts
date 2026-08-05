@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { reimbursementFormSchema } from "@/lib/validations/reimbursement";
+import { sendReimbursementStatusChangedEmail } from "@/lib/email";
 import type { ReimbursementStatus } from "@/lib/generated/prisma/client";
 
 export type ActionResult = { success: true } | { success: false; error: string };
@@ -17,7 +18,14 @@ async function transitionStatus(
 
   const current = await prisma.reimbursement.findUnique({
     where: { id: reimbursementId },
-    select: { status: true },
+    select: {
+      status: true,
+      fullName: true,
+      email: true,
+      amount: true,
+      description: true,
+      eventName: true,
+    },
   });
   if (!current) return { success: false, error: "Reimbursement not found." };
 
@@ -36,6 +44,8 @@ async function transitionStatus(
       },
     }),
   ]);
+
+  await sendReimbursementStatusChangedEmail({ id: reimbursementId, ...current }, toStatus, note);
 
   revalidatePath(`/admin/reimbursements/${reimbursementId}`);
   revalidatePath("/admin/reimbursements");
@@ -183,7 +193,16 @@ export async function markPaid(
 
   const current = await prisma.reimbursement.findUnique({
     where: { id: reimbursementId },
-    select: { status: true, orgId: true, amount: true, budgetItemId: true },
+    select: {
+      status: true,
+      orgId: true,
+      amount: true,
+      budgetItemId: true,
+      fullName: true,
+      email: true,
+      description: true,
+      eventName: true,
+    },
   });
   if (!current) return { success: false, error: "Reimbursement not found." };
 
@@ -226,6 +245,18 @@ export async function markPaid(
       },
     }),
   ]);
+
+  await sendReimbursementStatusChangedEmail(
+    {
+      id: reimbursementId,
+      fullName: current.fullName,
+      email: current.email,
+      amount: current.amount,
+      description: current.description,
+      eventName: current.eventName,
+    },
+    "PAID",
+  );
 
   revalidatePath(`/admin/reimbursements/${reimbursementId}`);
   revalidatePath("/admin/reimbursements");

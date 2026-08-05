@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { getActiveCycle } from "@/lib/cycles";
 import { reimbursementFormSchema } from "@/lib/validations/reimbursement";
+import { sendReimbursementSubmittedEmail } from "@/lib/email";
 
 export type SubmitReimbursementState = {
   fieldErrors?: Record<string, string[] | undefined>;
@@ -94,6 +95,12 @@ export async function submitReimbursement(
       },
     },
   });
+
+  const treasuryStaff = await prisma.user.findMany({
+    where: { orgId: org.id, role: { in: ["TREASURER", "ADMIN", "SUPER_ADMIN"] } },
+    select: { email: true },
+  });
+  await sendReimbursementSubmittedEmail(reimbursement, treasuryStaff.map((u) => u.email));
 
   revalidatePath("/dashboard");
   redirect(`/reimbursements/${reimbursement.id}`);
