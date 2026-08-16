@@ -5,6 +5,6 @@ export default async function RootPage() {
   const user = await getCurrentUser();
 
   if (!user) redirect("/login");
-  if (user.role === "TREASURER" || user.role === "SUPER_ADMIN") redirect("/admin");
+  if (["EBOARD", "TREASURER", "ADMIN", "SUPER_ADMIN"].includes(user.role)) redirect("/admin");
   redirect("/dashboard");
 }

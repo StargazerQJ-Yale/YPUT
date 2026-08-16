@@ -214,7 +214,11 @@ export function ReimbursementForm({
       </div>
 
       <div>
-        <Label>Receipt</Label>
+        <Label>Receipt (required)</Label>
+        <p className="mt-1 text-xs text-muted-foreground">
+          A receipt is required for every reimbursement — we use it to verify and keep a record of
+          all spending. Requests without one can&apos;t be processed.
+        </p>
         <div className="mt-1.5 space-y-2">
           <FileDropzone
             name="receipt"

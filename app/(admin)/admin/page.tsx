@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { getTotalFund } from "@/lib/budgets";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 export default async function AdminOverviewPage() {
+  await requireAdmin();
   const org = await getDefaultOrg();
   const fiscalYear = await getActiveFiscalYear();
 

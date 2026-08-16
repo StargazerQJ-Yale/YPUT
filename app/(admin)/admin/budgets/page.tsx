@@ -10,17 +10,22 @@ import { EditBudgetAreaDialog } from "@/components/admin/edit-budget-area-dialog
 import { EditBudgetItemDialog } from "@/components/admin/edit-budget-item-dialog";
 import { FundDepositForm } from "@/components/admin/fund-deposit-form";
 import { DeleteFundDepositButton } from "@/components/admin/delete-fund-deposit-button";
+import { MarkDepositReceivedButton } from "@/components/admin/mark-deposit-received-button";
+import { FundDepositStatusBadge } from "@/components/admin/fund-deposit-status-badge";
 import { ExportMenu } from "@/components/admin/export-menu";
+import { requireAdminAreaAccess } from "@/lib/auth";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
-import { getBudgetSummary, getTotalFund } from "@/lib/budgets";
+import { getBudgetSummary, getTotalFund, getPromisedFundTotal } from "@/lib/budgets";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 export default async function BudgetsPage() {
+  const viewer = await requireAdminAreaAccess();
+  const canEdit = viewer.role !== "EBOARD";
   const org = await getDefaultOrg();
   const fiscalYear = await getActiveFiscalYear();
 
-  const [budgetAreasList, budgetSummary, totalFund, fundDeposits] = await Promise.all([
+  const [budgetAreasList, budgetSummary, totalFund, promisedFund, fundDeposits] = await Promise.all([
     prisma.budgetArea.findMany({
       where: { orgId: org.id, fiscalYearId: fiscalYear.id },
       orderBy: { name: "asc" },
@@ -28,6 +33,7 @@ export default async function BudgetsPage() {
     }),
     getBudgetSummary(fiscalYear.id),
     getTotalFund(fiscalYear.id),
+    getPromisedFundTotal(fiscalYear.id),
     prisma.fundDeposit.findMany({
       where: { orgId: org.id, fiscalYearId: fiscalYear.id },
       orderBy: { depositDate: "desc" },
@@ -58,6 +64,12 @@ export default async function BudgetsPage() {
               <p className="text-xl font-semibold tabular-nums">{formatCurrency(totalFund)}</p>
             </div>
             <div>
+              <p className="text-xs text-muted-foreground">Promised (not arrived)</p>
+              <p className="text-xl font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+                {formatCurrency(promisedFund)}
+              </p>
+            </div>
+            <div>
               <p className="text-xs text-muted-foreground">Allocated</p>
               <p className="text-xl font-semibold tabular-nums">{formatCurrency(totalBudgeted)}</p>
             </div>
@@ -85,20 +97,33 @@ export default async function BudgetsPage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <FundDepositForm />
+          {canEdit && <FundDepositForm />}
           {fundDeposits.length > 0 && (
             <div className="divide-y border-t pt-2">
               {fundDeposits.map((deposit) => (
                 <div key={deposit.id} className="flex items-center justify-between gap-3 py-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{deposit.source}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(deposit.depositDate)}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-medium">{deposit.source}</p>
+                      <FundDepositStatusBadge status={deposit.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(deposit.depositDate)}
+                      {deposit.promisedBy ? ` · Promised by ${deposit.promisedBy}` : ""}
+                    </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
                     <span className="text-sm font-medium tabular-nums">
                       {formatCurrency(deposit.amount)}
                     </span>
-                    <DeleteFundDepositButton depositId={deposit.id} source={deposit.source} />
+                    {canEdit && (
+                      <>
+                        {deposit.status === "PROMISED" && (
+                          <MarkDepositReceivedButton depositId={deposit.id} />
+                        )}
+                        <DeleteFundDepositButton depositId={deposit.id} source={deposit.source} />
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -107,23 +132,27 @@ export default async function BudgetsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Add Budget Area</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BudgetAreaForm />
-        </CardContent>
-      </Card>
+      {canEdit && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Add Budget Area</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BudgetAreaForm />
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Add Budget Category</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BudgetItemForm budgetAreas={budgetAreasList.map((a) => ({ id: a.id, name: a.name }))} />
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Add Budget Category</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BudgetItemForm budgetAreas={budgetAreasList.map((a) => ({ id: a.id, name: a.name }))} />
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {budgetAreasList.length === 0 ? (
         <EmptyState icon={Wallet} title="No budget areas yet" description="Add one above to get started." />
@@ -144,10 +173,12 @@ export default async function BudgetsPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <EditBudgetAreaDialog budgetAreaId={area.id} currentName={area.name} />
-                    <DeleteBudgetAreaButton budgetAreaId={area.id} name={area.name} />
-                  </div>
+                  {canEdit && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <EditBudgetAreaDialog budgetAreaId={area.id} currentName={area.name} />
+                      <DeleteBudgetAreaButton budgetAreaId={area.id} name={area.name} />
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {area.budgetItems.length === 0 ? (
@@ -178,14 +209,18 @@ export default async function BudgetsPage() {
                                   {formatCurrency(itemSummary?.remaining ?? item.budgetedAmount)} left
                                 </p>
                               </div>
-                              <EditBudgetItemDialog
-                                budgetItemId={item.id}
-                                currentName={item.name}
-                                currentBudgetedAmount={Number(item.budgetedAmount)}
-                                currentBudgetAreaId={area.id}
-                                budgetAreas={budgetAreasList.map((a) => ({ id: a.id, name: a.name }))}
-                              />
-                              <DeleteBudgetItemButton budgetItemId={item.id} name={item.name} />
+                              {canEdit && (
+                                <>
+                                  <EditBudgetItemDialog
+                                    budgetItemId={item.id}
+                                    currentName={item.name}
+                                    currentBudgetedAmount={Number(item.budgetedAmount)}
+                                    currentBudgetAreaId={area.id}
+                                    budgetAreas={budgetAreasList.map((a) => ({ id: a.id, name: a.name }))}
+                                  />
+                                  <DeleteBudgetItemButton budgetItemId={item.id} name={item.name} />
+                                </>
+                              )}
                             </div>
                           </div>
                         );

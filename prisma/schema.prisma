@@ -62,15 +62,25 @@ model FiscalYear {
 // year is the sum of these, mirroring how the ledger sums expenses.
 // ---------------------------------------------------------------------------
 
+enum FundDepositStatus {
+  PROMISED
+  RECEIVED
+}
+
 model FundDeposit {
-  id               String   @id @default(cuid())
+  id               String            @id @default(cuid())
   orgId            String
   fiscalYearId     String
-  amount           Decimal  @db.Decimal(12, 2)
+  amount           Decimal           @db.Decimal(12, 2)
   source           String // e.g. "Fall allocation", "Fundraiser proceeds"
+  promisedBy       String? // who committed to give this money (person, office, donor)
+  status           FundDepositStatus @default(RECEIVED)
+  // Meaning depends on status: the date it was promised (PROMISED) or the
+  // date it actually landed (RECEIVED) — flipping status to RECEIVED should
+  // also update this to the real deposit date.
   depositDate      DateTime
   recordedByUserId String
-  createdAt        DateTime @default(now())
+  createdAt        DateTime          @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   fiscalYear   FiscalYear   @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
@@ -85,6 +95,7 @@ model FundDeposit {
 
 enum UserRole {
   MEMBER
+  EBOARD
   TREASURER
   ADMIN
   SUPER_ADMIN
@@ -116,6 +127,7 @@ model User {
   recordedPayments          Payment[]                   @relation("PaymentRecordedBy")
   recordedFundDeposits      FundDeposit[]                @relation("FundDepositRecordedBy")
   createdGuests             Guest[]                     @relation("GuestCreatedBy")
+  recordedLedgerTransactions LedgerTransaction[]         @relation("LedgerTransactionRecordedBy")
 
   @@index([orgId])
 }
@@ -284,15 +296,21 @@ model Payment {
 model LedgerTransaction {
   id              String   @id @default(cuid())
   orgId           String
-  reimbursementId String   @unique
+  // Null for a manual entry (money/spending that never went through a
+  // Reimbursement submission, e.g. recorded after the fact for a purchase
+  // made outside the site) — description/recordedByUserId carry that case.
+  reimbursementId String?  @unique
   budgetItemId    String
   amount          Decimal  @db.Decimal(12, 2)
   occurredAt      DateTime
+  description       String?
+  recordedByUserId  String?
   createdAt       DateTime @default(now())
 
-  organization  Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  reimbursement Reimbursement @relation(fields: [reimbursementId], references: [id], onDelete: Cascade)
-  budgetItem    BudgetItem    @relation(fields: [budgetItemId], references: [id])
+  organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  reimbursement Reimbursement? @relation(fields: [reimbursementId], references: [id], onDelete: Cascade)
+  budgetItem    BudgetItem     @relation(fields: [budgetItemId], references: [id])
+  recordedBy    User?          @relation("LedgerTransactionRecordedBy", fields: [recordedByUserId], references: [id])
 
   @@index([orgId, occurredAt])
 }

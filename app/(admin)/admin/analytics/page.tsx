@@ -7,6 +7,7 @@ import { ChartCard } from "@/components/admin/chart-card";
 import { MonthlySpendingChart } from "@/components/admin/monthly-spending-chart";
 import { SpendingByCategoryChart } from "@/components/admin/spending-by-category-chart";
 import { ExportMenu } from "@/components/admin/export-menu";
+import { requireAdmin } from "@/lib/auth";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { getBudgetSummary, getTotalFund } from "@/lib/budgets";
 import { getMonthlySpending, getLargestExpenses } from "@/lib/analytics";
@@ -14,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 export default async function AnalyticsPage() {
+  await requireAdmin();
   const org = await getDefaultOrg();
   const fiscalYear = await getActiveFiscalYear();
 

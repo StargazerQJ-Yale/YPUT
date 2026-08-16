@@ -80,7 +80,7 @@ async function main() {
     where: { slug: "por" },
     update: {},
     create: {
-      name: "Yale Political Union of the Party of the Right",
+      name: "Yale Political Union",
       slug: "por",
     },
   });

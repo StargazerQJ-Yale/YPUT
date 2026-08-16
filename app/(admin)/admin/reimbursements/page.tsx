@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ClickableTableRow } from "@/components/shared/clickable-table-row";
 import { ReimbursementsFilterBar } from "@/components/admin/reimbursements-filter-bar";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
 import { getDefaultOrg } from "@/lib/org";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Prisma, ReimbursementStatus } from "@/lib/generated/prisma/client";
@@ -22,6 +23,7 @@ export default async function AdminReimbursementsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await requireAdmin();
   const params = await searchParams;
   const org = await getDefaultOrg();
 
