@@ -15,11 +15,13 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { GuestStatusBadge } from "@/components/admin/guest-status-badge";
 import { GuestResearchPanel } from "@/components/admin/guest-research-panel";
 import { DeleteGuestButton } from "@/components/admin/delete-guest-button";
+import { requireAdmin } from "@/lib/auth";
 import { getDefaultOrg } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatCurrency } from "@/lib/format";
 
 export default async function GuestDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const org = await getDefaultOrg();
 

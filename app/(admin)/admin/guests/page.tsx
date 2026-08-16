@@ -5,11 +5,13 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { GuestForm } from "@/components/admin/guest-form";
 import { GuestStatusBadge } from "@/components/admin/guest-status-badge";
 import { DeleteGuestButton } from "@/components/admin/delete-guest-button";
+import { requireAdmin } from "@/lib/auth";
 import { getDefaultOrg } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/lib/format";
 
 export default async function GuestsPage() {
+  await requireAdmin();
   const org = await getDefaultOrg();
 
   const [guests, lectureships] = await Promise.all([

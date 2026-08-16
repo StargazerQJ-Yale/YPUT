@@ -43,9 +43,22 @@ export async function researchGuestAndMatchLectureship(
   let searchContext = "";
   if (options.useWebSearch) {
     try {
-      const results = await searchWeb(guestName);
+      // A plain name search often surfaces someone's most famous work (e.g.
+      // activism, a career) without ever mentioning their education — which
+      // silently starved the Harvard match of the one fact it needs. Run the
+      // general search first, then a dedicated "<name> Harvard" search after
+      // it, so that connection gets caught even when it's not what the
+      // person is most known for.
+      const generalResults = await searchWeb(guestName);
+      const harvardResults = await searchWeb(`${guestName} Harvard`);
+      const seenUrls = new Set<string>();
+      const results = [...generalResults, ...harvardResults].filter((r) => {
+        if (seenUrls.has(r.url)) return false;
+        seenUrls.add(r.url);
+        return true;
+      });
       if (results.length > 0) {
-        searchContext = `\nLive web search results for "${guestName}":\n${results
+        searchContext = `\nLive web search results for "${guestName}" (includes a dedicated search for any Harvard connection):\n${results
           .map((r, i) => `${i + 1}. ${r.title} (${r.url})\n   ${r.content}`)
           .join("\n")}\n`;
       }

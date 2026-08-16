@@ -13,16 +13,16 @@ const DEFAULT_ADMIN_PIN = "YPUofPOR"; // kept in sync with lib/pin.ts
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-// One-off, idempotent: sets the default admin PIN for any Treasurer/Admin/
-// Super Admin promoted before this feature (or the Admin role) existed. Safe
+// One-off, idempotent: sets the default admin PIN for any E-Board/Treasurer/
+// Admin/Super Admin promoted before this feature (or that role) existed. Safe
 // to re-run.
 async function main() {
   const adminsWithoutPin = await prisma.user.findMany({
-    where: { role: { in: ["TREASURER", "ADMIN", "SUPER_ADMIN"] }, passwordHash: null },
+    where: { role: { in: ["EBOARD", "TREASURER", "ADMIN", "SUPER_ADMIN"] }, passwordHash: null },
   });
 
   if (adminsWithoutPin.length === 0) {
-    console.log("Nothing to backfill — every Treasurer/Admin/Super Admin already has a PIN.");
+    console.log("Nothing to backfill — every E-Board/Treasurer/Admin/Super Admin already has a PIN.");
     return;
   }
 

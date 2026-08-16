@@ -1,8 +1,8 @@
 # Treasury Portal
 
-Replaces Google Forms + Excel for the Yale Political Union's (Party of the Right)
-treasury workflow: members submit reimbursements, treasurers review and pay them,
-and (in later phases) the org gets a public ledger and analytics.
+Replaces Google Forms + Excel for the Yale Political Union's treasury workflow:
+members submit reimbursements, treasurers review and pay them, and (in later
+phases) the org gets a public ledger and analytics.
 
 This is **Phase 1**: authentication, reimbursement submission, and admin review.
 The database schema already models budgets, ledger transactions, fiscal years,

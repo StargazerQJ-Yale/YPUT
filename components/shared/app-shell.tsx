@@ -99,7 +99,11 @@ function NavLinks({ navItems, onNavigate }: { navItems: NavItem[]; onNavigate?: 
 
 function UserMenu({ user }: { user: AppShellUser }) {
   const [pinDialogOpen, setPinDialogOpen] = React.useState(false);
-  const isAdmin = user.role === "TREASURER" || user.role === "ADMIN" || user.role === "SUPER_ADMIN";
+  const isAdmin =
+    user.role === "TREASURER" ||
+    user.role === "ADMIN" ||
+    user.role === "SUPER_ADMIN" ||
+    user.role === "EBOARD";
 
   const initials = (user.fullName || user.email)
     .split(" ")

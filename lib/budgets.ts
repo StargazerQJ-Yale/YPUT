@@ -60,12 +60,25 @@ export async function getBudgetSummary(fiscalYearId: string): Promise<BudgetArea
 }
 
 /** Total money the org has actually received this fiscal year — the sum of
- * all FundDeposit rows, mirroring how budget "Used" is summed from the
- * ledger. This is the org's real income, separate from how it's allocated
- * across budget categories (which can add up to more or less than this). */
+ * RECEIVED FundDeposit rows only (a PROMISED one hasn't landed yet, so it
+ * shouldn't count as spendable), mirroring how budget "Used" is summed from
+ * the ledger. This is the org's real income, separate from how it's
+ * allocated across budget categories (which can add up to more or less than
+ * this). */
 export async function getTotalFund(fiscalYearId: string): Promise<number> {
   const result = await prisma.fundDeposit.aggregate({
-    where: { fiscalYearId },
+    where: { fiscalYearId, status: "RECEIVED" },
+    _sum: { amount: true },
+  });
+  return Number(result._sum.amount ?? 0);
+}
+
+/** Total still-pledged-but-not-yet-arrived money for a fiscal year — shown
+ * alongside getTotalFund so the "stage" of the org's income is visible, not
+ * just the confirmed total. */
+export async function getPromisedFundTotal(fiscalYearId: string): Promise<number> {
+  const result = await prisma.fundDeposit.aggregate({
+    where: { fiscalYearId, status: "PROMISED" },
     _sum: { amount: true },
   });
   return Number(result._sum.amount ?? 0);

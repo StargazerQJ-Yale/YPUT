@@ -1,11 +1,11 @@
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAreaAccess } from "@/lib/auth";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { getBudgetSummary } from "@/lib/budgets";
 import { buildExportResponse } from "@/lib/exports/response";
 import { formatCurrency } from "@/lib/format";
 
 export async function GET(request: Request) {
-  await requireAdmin();
+  await requireAdminAreaAccess();
 
   const org = await getDefaultOrg();
   const fiscalYear = await getActiveFiscalYear();

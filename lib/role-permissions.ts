@@ -4,10 +4,11 @@
 
 import type { UserRole } from "@/lib/generated/prisma/client";
 
-export const ALL_ROLES: UserRole[] = ["MEMBER", "TREASURER", "ADMIN", "SUPER_ADMIN"];
+export const ALL_ROLES: UserRole[] = ["MEMBER", "EBOARD", "TREASURER", "ADMIN", "SUPER_ADMIN"];
 
 export const ROLE_LABELS: Record<string, string> = {
   MEMBER: "Member",
+  EBOARD: "E-Board",
   TREASURER: "Treasurer",
   ADMIN: "Admin",
   SUPER_ADMIN: "Super Admin",
@@ -27,11 +28,11 @@ export const ROLE_PERMISSIONS: Record<
   { assignableRoles: UserRole[]; manageableCurrentRoles: UserRole[] }
 > = {
   SUPER_ADMIN: {
-    assignableRoles: ["MEMBER", "TREASURER", "ADMIN"],
-    manageableCurrentRoles: ["MEMBER", "TREASURER", "ADMIN"],
+    assignableRoles: ["MEMBER", "EBOARD", "TREASURER", "ADMIN"],
+    manageableCurrentRoles: ["MEMBER", "EBOARD", "TREASURER", "ADMIN"],
   },
   ADMIN: {
-    assignableRoles: ["MEMBER", "TREASURER", "ADMIN"],
-    manageableCurrentRoles: ["MEMBER", "TREASURER"],
+    assignableRoles: ["MEMBER", "EBOARD", "TREASURER", "ADMIN"],
+    manageableCurrentRoles: ["MEMBER", "EBOARD", "TREASURER"],
   },
 };

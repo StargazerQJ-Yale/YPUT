@@ -96,11 +96,15 @@ export default async function PublicLedgerPage() {
                           <div key={t.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                             <div className="min-w-0">
                               <p className="truncate">
-                                {t.reimbursement.eventName || t.reimbursement.description}
+                                {t.reimbursement
+                                  ? t.reimbursement.eventName || t.reimbursement.description
+                                  : t.description}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {formatDate(t.occurredAt)}
-                                {org.showMemberNamesOnPublicLedger && ` · ${t.reimbursement.fullName}`}
+                                {t.reimbursement && org.showMemberNamesOnPublicLedger
+                                  ? ` · ${t.reimbursement.fullName}`
+                                  : ""}
                               </p>
                             </div>
                             <div className="flex shrink-0 items-center gap-3">

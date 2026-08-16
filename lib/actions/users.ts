@@ -82,7 +82,8 @@ export async function updateUserRole(targetUserId: string, role: UserRole): Prom
   }
 
   const needsDefaultPin =
-    (role === "TREASURER" || role === "ADMIN" || role === "SUPER_ADMIN") && !target.passwordHash;
+    (role === "EBOARD" || role === "TREASURER" || role === "ADMIN" || role === "SUPER_ADMIN") &&
+    !target.passwordHash;
 
   await prisma.user.update({
     where: { id: targetUserId },
