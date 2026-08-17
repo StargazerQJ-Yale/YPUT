@@ -241,10 +241,6 @@ export function ReimbursementForm({
               Scan Receipt with AI
             </Button>
           )}
-          <p className="text-xs text-muted-foreground">
-            Optional — reads the amount, date, and description off your receipt so you don&apos;t
-            have to type them. Always double-check before submitting.
-          </p>
         </div>
       </div>
 
