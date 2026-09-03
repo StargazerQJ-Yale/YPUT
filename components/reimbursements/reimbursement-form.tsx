@@ -371,7 +371,7 @@ export function ReimbursementForm({
           className="mt-0.5"
         />
         <Label htmlFor="confirmedNotified" className="text-sm font-normal leading-snug">
-          I have checked with or notified the Treasurer, E-Board, or President before making this
+          I have checked with or notified the Treasurer, or President before making this
           purchase. <span className="font-medium">Unnotified purchases may not be refunded.</span>
         </Label>
       </div>
