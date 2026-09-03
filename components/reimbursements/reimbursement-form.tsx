@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -73,6 +74,7 @@ export function ReimbursementForm({
   const [receiptFile, setReceiptFile] = React.useState<File | null>(null);
   const [scanning, startScanning] = useTransition();
   const [uploading, setUploading] = React.useState(false);
+  const [confirmedNotified, setConfirmedNotified] = React.useState(false);
   const amountRef = React.useRef<HTMLInputElement>(null);
   const purchaseDateRef = React.useRef<HTMLInputElement>(null);
   const eventNameRef = React.useRef<HTMLInputElement>(null);
@@ -361,7 +363,25 @@ export function ReimbursementForm({
         />
       </div>
 
-      <Button type="submit" disabled={pending || uploading} size="lg" className="w-full sm:w-auto">
+      <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <Checkbox
+          id="confirmedNotified"
+          checked={confirmedNotified}
+          onCheckedChange={(checked) => setConfirmedNotified(checked === true)}
+          className="mt-0.5"
+        />
+        <Label htmlFor="confirmedNotified" className="text-sm font-normal leading-snug">
+          I have checked with or notified the Treasurer, E-Board, or President before making this
+          purchase. <span className="font-medium">Unnotified purchases may not be refunded.</span>
+        </Label>
+      </div>
+
+      <Button
+        type="submit"
+        disabled={pending || uploading || !confirmedNotified}
+        size="lg"
+        className="w-full sm:w-auto"
+      >
         {(pending || uploading) && <Loader2 className="size-4 animate-spin" />}
         {uploading ? "Uploading receipt..." : "Submit Reimbursement"}
       </Button>
