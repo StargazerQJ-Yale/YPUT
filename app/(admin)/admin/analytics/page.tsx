@@ -7,7 +7,7 @@ import { ChartCard } from "@/components/admin/chart-card";
 import { MonthlySpendingChart } from "@/components/admin/monthly-spending-chart";
 import { SpendingByCategoryChart } from "@/components/admin/spending-by-category-chart";
 import { ExportMenu } from "@/components/admin/export-menu";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAreaAccess } from "@/lib/auth";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { getBudgetSummary, getTotalFund } from "@/lib/budgets";
 import { getMonthlySpending, getLargestExpenses } from "@/lib/analytics";
@@ -15,7 +15,8 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 export default async function AnalyticsPage() {
-  await requireAdmin();
+  const viewer = await requireAdminAreaAccess();
+  const canOpenReimbursements = viewer.role !== "EBOARD";
   const org = await getDefaultOrg();
   const fiscalYear = await getActiveFiscalYear();
 
@@ -84,25 +85,37 @@ export default async function AnalyticsPage() {
             <p className="text-sm text-muted-foreground">No paid reimbursements yet.</p>
           ) : (
             <div className="divide-y">
-              {largestExpenses.map((expense) => (
-                <Link
-                  key={expense.id}
-                  href={`/admin/reimbursements/${expense.id}`}
-                  className="flex items-center justify-between gap-3 py-2.5 hover:bg-muted/40"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {expense.eventName || expense.description}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {expense.budgetAreaName} · {formatDate(expense.purchaseDate)}
-                    </p>
+              {largestExpenses.map((expense) => {
+                const content = (
+                  <>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {expense.eventName || expense.description}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {expense.budgetAreaName} · {formatDate(expense.purchaseDate)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-medium tabular-nums">
+                      {formatCurrency(expense.amount)}
+                    </span>
+                  </>
+                );
+
+                return canOpenReimbursements ? (
+                  <Link
+                    key={expense.id}
+                    href={`/admin/reimbursements/${expense.id}`}
+                    className="flex items-center justify-between gap-3 py-2.5 hover:bg-muted/40"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div key={expense.id} className="flex items-center justify-between gap-3 py-2.5">
+                    {content}
                   </div>
-                  <span className="shrink-0 text-sm font-medium tabular-nums">
-                    {formatCurrency(expense.amount)}
-                  </span>
-                </Link>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
