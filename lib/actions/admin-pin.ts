@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, requireSuperAdmin } from "@/lib/auth";
+import { requireAdminAreaAccess, requireSuperAdmin } from "@/lib/auth";
 import { DEFAULT_ADMIN_PIN, PIN_COOKIE_NAME, hashPin, signPinToken, verifyPin } from "@/lib/pin";
 
 export type ActionResult = { success: true } | { success: false; error: string };
@@ -11,7 +11,7 @@ export async function verifyAdminPin(
   _prevState: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const user = await requireAdmin();
+  const user = await requireAdminAreaAccess();
 
   const pin = String(formData.get("pin") ?? "");
   if (!pin) return { success: false, error: "Enter your PIN." };
@@ -37,7 +37,7 @@ export async function changeAdminPin(
   _prevState: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const user = await requireAdmin();
+  const user = await requireAdminAreaAccess();
 
   const currentPin = String(formData.get("currentPin") ?? "");
   const newPin = String(formData.get("newPin") ?? "");
