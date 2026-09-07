@@ -6,7 +6,12 @@ import { getDefaultOrg } from "@/lib/org";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") || "/dashboard";
+  // Falls back to "/" (not "/dashboard") when no explicit next was set —
+  // e.g. signing in from the bare root URL, with no deep-linked page to
+  // return to — so the root page's role-based redirect (E-Board/Treasurer/
+  // Admin/Super Admin -> /admin, everyone else -> /dashboard) decides where
+  // to land, instead of every role being dumped onto the member dashboard.
+  const next = searchParams.get("next") || "/";
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);
