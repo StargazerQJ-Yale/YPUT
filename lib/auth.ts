@@ -8,9 +8,10 @@ import type { User, UserRole } from "@/lib/generated/prisma/client";
 const ADMIN_ROLES: UserRole[] = ["TREASURER", "ADMIN", "SUPER_ADMIN"];
 const ROLE_MANAGER_ROLES: UserRole[] = ["ADMIN", "SUPER_ADMIN"];
 // Everyone allowed into the /admin shell at all — Treasurer/Admin/Super Admin
-// (full access) plus E-Board (read-only: Ledger + Budgets only, enforced by
-// those two pages using this check while every other admin page still uses
-// the stricter requireAdmin()).
+// (full access) plus E-Board (read-only: Overview/Budgets/Ledger/Analytics
+// only, enforced by those pages using this check while every other admin
+// page — Reimbursements, Guests, Users, Cycles, Settings — still uses the
+// stricter requireAdmin()).
 const ADMIN_AREA_ROLES: UserRole[] = ["TREASURER", "ADMIN", "SUPER_ADMIN", "EBOARD"];
 
 /** Returns the signed-in user's app-level profile, or null if not signed in. */
@@ -44,8 +45,8 @@ export async function requireAdmin(): Promise<User> {
 }
 
 /** Treasurer/Admin/Super Admin, or E-Board (view-only). Use for the /admin
- * shell itself and for the Ledger/Budgets pages E-Board can see; every other
- * admin page/action should keep using requireAdmin(). */
+ * shell itself and for the Overview/Budgets/Ledger/Analytics pages E-Board
+ * can see; every other admin page/action should keep using requireAdmin(). */
 export async function requireAdminAreaAccess(): Promise<User> {
   return requireRole(ADMIN_AREA_ROLES);
 }

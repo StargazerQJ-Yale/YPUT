@@ -13,14 +13,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <AdminPinGate />;
   }
 
-  // E-Board is read-only and scoped to Ledger/Budgets — every other admin
-  // page still requires requireAdmin() itself, so hiding nav items here is a
-  // UX nicety, not the only thing standing between E-Board and those pages.
+  // E-Board is read-only and scoped to Overview/Budgets/Ledger/Analytics —
+  // every other admin page still requires requireAdmin() itself, so hiding
+  // nav items here is a UX nicety, not the only thing standing between
+  // E-Board and those pages.
   const navItems: NavItem[] =
     user.role === "EBOARD"
       ? [
+          { href: "/admin", label: "Overview", icon: "dashboard" },
           { href: "/admin/budgets", label: "Budgets", icon: "budgets" },
           { href: "/admin/ledger", label: "Ledger", icon: "ledger" },
+          { href: "/admin/analytics", label: "Analytics", icon: "analytics" },
         ]
       : [
           { href: "/admin", label: "Overview", icon: "dashboard" },

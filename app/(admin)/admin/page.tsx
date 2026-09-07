@@ -4,13 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdminAreaAccess } from "@/lib/auth";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { getTotalFund } from "@/lib/budgets";
 import { formatCurrency, formatDate } from "@/lib/format";
 
 export default async function AdminOverviewPage() {
-  await requireAdmin();
+  const viewer = await requireAdminAreaAccess();
+  const canOpenReimbursements = viewer.role !== "EBOARD";
   const org = await getDefaultOrg();
   const fiscalYear = await getActiveFiscalYear();
 
@@ -103,24 +104,38 @@ export default async function AdminOverviewPage() {
           {recent.length === 0 && (
             <p className="py-6 text-center text-sm text-muted-foreground">No reimbursements yet.</p>
           )}
-          {recent.map((r) => (
-            <Link
-              key={r.id}
-              href={`/admin/reimbursements/${r.id}`}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg px-3 py-2.5 -mx-3 hover:bg-muted/60"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{r.fullName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {r.budgetArea.name} · {formatDate(r.purchaseDate)}
-                </p>
+          {recent.map((r) => {
+            const rowClassName =
+              "flex flex-wrap items-center justify-between gap-3 rounded-lg px-3 py-2.5 -mx-3";
+            const content = (
+              <>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{r.fullName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.budgetArea.name} · {formatDate(r.purchaseDate)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium tabular-nums">{formatCurrency(r.amount)}</span>
+                  <StatusBadge status={r.status} />
+                </div>
+              </>
+            );
+
+            return canOpenReimbursements ? (
+              <Link
+                key={r.id}
+                href={`/admin/reimbursements/${r.id}`}
+                className={`${rowClassName} hover:bg-muted/60`}
+              >
+                {content}
+              </Link>
+            ) : (
+              <div key={r.id} className={rowClassName}>
+                {content}
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium tabular-nums">{formatCurrency(r.amount)}</span>
-                <StatusBadge status={r.status} />
-              </div>
-            </Link>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
     </div>
