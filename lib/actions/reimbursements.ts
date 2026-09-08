@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
@@ -10,6 +9,14 @@ import { reimbursementFormSchema } from "@/lib/validations/reimbursement";
 import { sendReimbursementSubmittedEmail } from "@/lib/email";
 
 export type SubmitReimbursementState = {
+  // On success, the client (not this action) navigates to the new
+  // reimbursement's page — calling redirect() here threw inconsistently
+  // when this action was invoked from the custom async onSubmit handler
+  // (needed for the direct-to-Supabase receipt upload step beforehand),
+  // sometimes leaving the submit form mounted alongside the destination
+  // page instead of replacing it.
+  success?: boolean;
+  reimbursementId?: string;
   fieldErrors?: Record<string, string[] | undefined>;
   formError?: string;
   // Echoes back everything the user typed (except the file, which browsers
@@ -103,5 +110,5 @@ export async function submitReimbursement(
   await sendReimbursementSubmittedEmail(reimbursement, treasuryStaff.map((u) => u.email));
 
   revalidatePath("/dashboard");
-  redirect(`/reimbursements/${reimbursement.id}`);
+  return { success: true, reimbursementId: reimbursement.id };
 }
