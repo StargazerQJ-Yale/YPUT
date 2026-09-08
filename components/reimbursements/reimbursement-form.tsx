@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useActionState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,14 @@ export function ReimbursementForm({
   defaultFullName: string;
   defaultEmail: string;
 }) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(submitReimbursement, initialState);
+
+  React.useEffect(() => {
+    if (state.success && state.reimbursementId) {
+      router.push(`/reimbursements/${state.reimbursementId}`);
+    }
+  }, [state, router]);
   const [selectedAreaId, setSelectedAreaId] = React.useState<string>(
     () => state.values?.budgetAreaId ?? "",
   );
@@ -75,12 +83,29 @@ export function ReimbursementForm({
   const [scanning, startScanning] = useTransition();
   const [uploading, setUploading] = React.useState(false);
   const [confirmedNotified, setConfirmedNotified] = React.useState(false);
-  const amountRef = React.useRef<HTMLInputElement>(null);
-  const purchaseDateRef = React.useRef<HTMLInputElement>(null);
+  // Tracked in state (rather than left as plain defaultValue inputs) so the
+  // submit button's enabled state can require them directly, on top of the
+  // native `required` attributes — the checkbox above must never become the
+  // only thing gating submission.
+  const [fullName, setFullName] = React.useState(defaultFullName);
+  const [email, setEmail] = React.useState(defaultEmail);
+  const [amount, setAmount] = React.useState(state.values?.amount ?? "");
+  const [purchaseDate, setPurchaseDate] = React.useState(state.values?.purchaseDate ?? "");
+  const [paymentMethod, setPaymentMethod] = React.useState(state.values?.paymentMethod ?? "");
+  const [paymentHandle, setPaymentHandle] = React.useState(state.values?.paymentHandle ?? "");
   const eventNameRef = React.useRef<HTMLInputElement>(null);
   const descriptionRef = React.useRef<HTMLTextAreaElement>(null);
 
   const selectedArea = budgetAreas.find((a) => a.id === selectedAreaId);
+
+  const coreFieldsFilled =
+    fullName.trim() !== "" &&
+    email.trim() !== "" &&
+    Number(amount) > 0 &&
+    purchaseDate.trim() !== "" &&
+    paymentMethod.trim() !== "" &&
+    paymentHandle.trim() !== "";
+  const canSubmit = confirmedNotified && !!receiptFile && coreFieldsFilled;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -142,11 +167,11 @@ export function ReimbursementForm({
         return;
       }
 
-      if (result.amount != null && amountRef.current) {
-        amountRef.current.value = String(result.amount);
+      if (result.amount != null) {
+        setAmount(String(result.amount));
       }
-      if (result.purchaseDate && purchaseDateRef.current) {
-        purchaseDateRef.current.value = result.purchaseDate;
+      if (result.purchaseDate) {
+        setPurchaseDate(result.purchaseDate);
       }
       if (result.vendor && eventNameRef.current && !eventNameRef.current.value) {
         eventNameRef.current.value = result.vendor;
@@ -169,12 +194,27 @@ export function ReimbursementForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="fullName">Full Name</Label>
-          <Input id="fullName" name="fullName" defaultValue={defaultFullName} className="mt-1.5" required />
+          <Input
+            id="fullName"
+            name="fullName"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="mt-1.5"
+            required
+          />
           <FieldError messages={state.fieldErrors?.fullName} />
         </div>
         <div>
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" defaultValue={defaultEmail} className="mt-1.5" required />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1.5"
+            required
+          />
           <FieldError messages={state.fieldErrors?.email} />
         </div>
       </div>
@@ -187,13 +227,13 @@ export function ReimbursementForm({
               $
             </span>
             <Input
-              ref={amountRef}
               id="amount"
               name="amount"
               type="number"
               step="0.01"
               min="0.01"
-              defaultValue={state.values?.amount ?? ""}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               className="pl-6"
               required
             />
@@ -203,11 +243,11 @@ export function ReimbursementForm({
         <div>
           <Label htmlFor="purchaseDate">Date of Purchase</Label>
           <Input
-            ref={purchaseDateRef}
             id="purchaseDate"
             name="purchaseDate"
             type="date"
-            defaultValue={state.values?.purchaseDate ?? ""}
+            value={purchaseDate}
+            onChange={(e) => setPurchaseDate(e.target.value)}
             className="mt-1.5"
             required
           />
@@ -322,7 +362,8 @@ export function ReimbursementForm({
           <Label htmlFor="paymentMethod">Payment Method</Label>
           <Select
             name="paymentMethod"
-            defaultValue={state.values?.paymentMethod}
+            value={paymentMethod}
+            onValueChange={(value) => setPaymentMethod(value ?? "")}
             items={PAYMENT_METHOD_OPTIONS}
           >
             <SelectTrigger id="paymentMethod" className="mt-1.5 w-full">
@@ -344,7 +385,8 @@ export function ReimbursementForm({
             id="paymentHandle"
             name="paymentHandle"
             placeholder="@venmo-handle, phone, or account info"
-            defaultValue={state.values?.paymentHandle ?? ""}
+            value={paymentHandle}
+            onChange={(e) => setPaymentHandle(e.target.value)}
             className="mt-1.5"
             required
           />
@@ -378,12 +420,12 @@ export function ReimbursementForm({
 
       <Button
         type="submit"
-        disabled={pending || uploading || !confirmedNotified}
+        disabled={pending || uploading || !canSubmit || state.success}
         size="lg"
         className="w-full sm:w-auto"
       >
-        {(pending || uploading) && <Loader2 className="size-4 animate-spin" />}
-        {uploading ? "Uploading receipt..." : "Submit Reimbursement"}
+        {(pending || uploading || state.success) && <Loader2 className="size-4 animate-spin" />}
+        {uploading ? "Uploading receipt..." : state.success ? "Redirecting..." : "Submit Reimbursement"}
       </Button>
     </form>
   );
