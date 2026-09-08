@@ -110,9 +110,9 @@ export default async function AdminOverviewPage() {
             const content = (
               <>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{r.fullName}</p>
+                  <p className="truncate text-sm font-medium">{r.eventName || r.description}</p>
                   <p className="text-xs text-muted-foreground">
-                    {r.budgetArea.name} · {formatDate(r.purchaseDate)}
+                    {r.fullName} · {r.budgetArea.name} · {formatDate(r.purchaseDate)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
