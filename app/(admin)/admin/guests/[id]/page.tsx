@@ -12,11 +12,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ClickableTableRow } from "@/components/shared/clickable-table-row";
 import { GuestStatusBadge } from "@/components/admin/guest-status-badge";
 import { GuestResearchPanel } from "@/components/admin/guest-research-panel";
+import { GuestExpenseForm } from "@/components/admin/guest-expense-form";
 import { DeleteGuestButton } from "@/components/admin/delete-guest-button";
 import { requireAdmin } from "@/lib/auth";
-import { getDefaultOrg } from "@/lib/org";
+import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatCurrency } from "@/lib/format";
 
@@ -24,8 +26,9 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
   await requireAdmin();
   const { id } = await params;
   const org = await getDefaultOrg();
+  const fiscalYear = await getActiveFiscalYear();
 
-  const [guest, lectureships, expenses] = await Promise.all([
+  const [guest, lectureships, expenses, budgetAreas] = await Promise.all([
     prisma.guest.findUnique({ where: { id } }),
     prisma.lectureshipFund.findMany({
       where: { orgId: org.id },
@@ -36,6 +39,11 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
       where: { guestId: id },
       orderBy: { purchaseDate: "asc" },
       include: { budgetArea: true, budgetItem: true },
+    }),
+    prisma.budgetArea.findMany({
+      where: { orgId: org.id, fiscalYearId: fiscalYear.id },
+      orderBy: { name: "asc" },
+      include: { budgetItems: { orderBy: { name: "asc" }, select: { id: true, name: true } } },
     }),
   ]);
 
@@ -87,7 +95,7 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
           <div>
             <CardTitle className="text-base">Expenses</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Reimbursements linked to this guest — attach them from the reimbursement&apos;s Edit dialog.
+              Add a cost directly below, or attach an existing reimbursement from its Edit dialog.
             </p>
           </div>
           {expenses.length > 0 && (
@@ -100,7 +108,9 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
             </Button>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <GuestExpenseForm guestId={guest.id} budgetAreas={budgetAreas} />
+
           {expenses.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-8 text-center">
               <Receipt className="size-6 text-muted-foreground" />
@@ -123,9 +133,11 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
                   </TableHeader>
                   <TableBody>
                     {expenses.map((expense) => (
-                      <TableRow key={expense.id}>
+                      <ClickableTableRow key={expense.id} href={`/admin/reimbursements/${expense.id}`}>
                         <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(expense.purchaseDate)}
+                          <Link href={`/admin/reimbursements/${expense.id}`} className="block">
+                            {formatDate(expense.purchaseDate)}
+                          </Link>
                         </TableCell>
                         <TableCell className="max-w-xs truncate">
                           {expense.eventName || expense.description}
@@ -139,7 +151,7 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
                         <TableCell className="text-right tabular-nums">
                           {formatCurrency(expense.amount)}
                         </TableCell>
-                      </TableRow>
+                      </ClickableTableRow>
                     ))}
                   </TableBody>
                 </Table>
