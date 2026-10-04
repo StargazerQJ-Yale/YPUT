@@ -15,10 +15,11 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { ClickableTableRow } from "@/components/shared/clickable-table-row";
 import { GuestStatusBadge } from "@/components/admin/guest-status-badge";
 import { GuestResearchPanel } from "@/components/admin/guest-research-panel";
-import { GuestExpenseForm } from "@/components/admin/guest-expense-form";
+import { GuestExpenseLinker, type LinkableExpense } from "@/components/admin/guest-expense-linker";
+import { UnlinkGuestExpenseButton } from "@/components/admin/unlink-guest-expense-button";
 import { DeleteGuestButton } from "@/components/admin/delete-guest-button";
 import { requireAdmin } from "@/lib/auth";
-import { getDefaultOrg, getActiveFiscalYear } from "@/lib/org";
+import { getDefaultOrg } from "@/lib/org";
 import { prisma } from "@/lib/prisma";
 import { formatDate, formatCurrency } from "@/lib/format";
 
@@ -26,9 +27,8 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
   await requireAdmin();
   const { id } = await params;
   const org = await getDefaultOrg();
-  const fiscalYear = await getActiveFiscalYear();
 
-  const [guest, lectureships, expenses, budgetAreas] = await Promise.all([
+  const [guest, lectureships, expenses, candidateReimbursements] = await Promise.all([
     prisma.guest.findUnique({ where: { id } }),
     prisma.lectureshipFund.findMany({
       where: { orgId: org.id },
@@ -40,16 +40,32 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
       orderBy: { purchaseDate: "asc" },
       include: { budgetArea: true, budgetItem: true },
     }),
-    prisma.budgetArea.findMany({
-      where: { orgId: org.id, fiscalYearId: fiscalYear.id },
-      orderBy: { name: "asc" },
-      include: { budgetItems: { orderBy: { name: "asc" }, select: { id: true, name: true } } },
+    // Every other reimbursement, to pick from in "Link an Existing Expense" —
+    // not filtered by date, since an expense for a guest's visit routinely
+    // falls outside that single day (travel booked weeks ahead, a bill
+    // settled weeks after).
+    prisma.reimbursement.findMany({
+      where: { orgId: org.id, guestId: { not: id } },
+      orderBy: { purchaseDate: "desc" },
+      take: 300,
+      include: { guest: { select: { name: true } } },
     }),
   ]);
 
   if (!guest || guest.orgId !== org.id) notFound();
 
   const totalExpenses = expenses.reduce((sum, r) => sum + Number(r.amount), 0);
+
+  const candidates: LinkableExpense[] = candidateReimbursements.map((r) => ({
+    id: r.id,
+    fullName: r.fullName,
+    description: r.description,
+    eventName: r.eventName,
+    amount: Number(r.amount),
+    purchaseDate: r.purchaseDate.toISOString(),
+    status: r.status,
+    guestName: r.guest?.name ?? null,
+  }));
 
   return (
     <div className="space-y-6">
@@ -95,7 +111,7 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
           <div>
             <CardTitle className="text-base">Expenses</CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Add a cost directly below, or attach an existing reimbursement from its Edit dialog.
+              Link any existing reimbursement to this guest below.
             </p>
           </div>
           {expenses.length > 0 && (
@@ -109,7 +125,7 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          <GuestExpenseForm guestId={guest.id} budgetAreas={budgetAreas} />
+          <GuestExpenseLinker guestId={guest.id} candidates={candidates} />
 
           {expenses.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-8 text-center">
@@ -129,6 +145,7 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
                       <TableHead>Budget Category</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="w-10" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -150,6 +167,9 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {formatCurrency(expense.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <UnlinkGuestExpenseButton reimbursementId={expense.id} />
                         </TableCell>
                       </ClickableTableRow>
                     ))}

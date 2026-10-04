@@ -5,7 +5,7 @@ import { extractJsonBlock } from "@/lib/ai-json";
 
 // Groq's current vision-capable model (accepts image_url content parts,
 // OpenAI-compatible). Free tier, same key as lib/groq.ts.
-const RECEIPT_SCAN_MODEL = "qwen/qwen3.6-27b";
+const RECEIPT_SCAN_MODEL = "qwen/qwen3.8-27b";
 
 export type ReceiptScanResult = {
   amount: number | null;
