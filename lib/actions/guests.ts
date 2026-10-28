@@ -78,6 +78,33 @@ export async function researchGuest(
   return { success: true };
 }
 
+const resolutionSchema = z.object({
+  resolution: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+/** Sets the debate's resolution/topic — free text, shown on the guest
+ * expense export sheets alongside the auto-computed expense breakdown. */
+export async function updateGuestResolution(
+  guestId: string,
+  _prevState: ActionResult | null,
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
+
+  const parsed = resolutionSchema.safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await prisma.guest.update({
+    where: { id: guestId },
+    data: { resolution: parsed.data.resolution || null },
+  });
+
+  revalidatePath(`/admin/guests/${guestId}`);
+  return { success: true };
+}
+
 const matchSchema = z.object({
   matchedLectureshipId: z.string().min(1, "Select a lectureship"),
   matchReasoning: z.string().trim().max(2000).optional().or(z.literal("")),

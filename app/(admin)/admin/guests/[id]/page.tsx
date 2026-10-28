@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { ClickableTableRow } from "@/components/shared/clickable-table-row";
 import { GuestStatusBadge } from "@/components/admin/guest-status-badge";
 import { GuestResearchPanel } from "@/components/admin/guest-research-panel";
+import { GuestResolutionForm } from "@/components/admin/guest-resolution-form";
 import { GuestExpenseLinker, type LinkableExpense } from "@/components/admin/guest-expense-linker";
 import { UnlinkGuestExpenseButton } from "@/components/admin/unlink-guest-expense-button";
 import { DeleteGuestButton } from "@/components/admin/delete-guest-button";
@@ -89,6 +90,12 @@ export default async function GuestDetailPage({ params }: { params: Promise<{ id
         </div>
         <DeleteGuestButton guestId={guest.id} name={guest.name} />
       </div>
+
+      <Card>
+        <CardContent className="pt-6">
+          <GuestResolutionForm guestId={guest.id} resolution={guest.resolution} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

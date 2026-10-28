@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Mic2, Star } from "lucide-react";
+import { Download, Mic2, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { GuestForm } from "@/components/admin/guest-form";
 import { GuestStatusBadge } from "@/components/admin/guest-status-badge";
@@ -28,12 +29,24 @@ export default async function GuestsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Guests</h1>
-        <p className="text-sm text-muted-foreground">
-          Track Tuesday debate speakers and let AI research which Yale lectureship fund fits
-          each one.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Guests</h1>
+          <p className="text-sm text-muted-foreground">
+            Track Tuesday debate speakers and let AI research which Yale lectureship fund fits
+            each one.
+          </p>
+        </div>
+        {guests.length > 0 && (
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href="/api/exports/guests-summary" download />}
+          >
+            <Download className="size-4" />
+            Export All (.xlsx)
+          </Button>
+        )}
       </div>
 
       <Card>

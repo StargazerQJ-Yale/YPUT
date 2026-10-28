@@ -90,7 +90,7 @@ export function GuestResearchPanel({
 }) {
   const router = useRouter();
   const [researching, startResearching] = useTransition();
-  const [model, setModel] = React.useState<GroqModel>("llama-3.3-70b-versatile");
+  const [model, setModel] = React.useState<GroqModel>("openai/gpt-oss-120b");
   const [useWebSearch, setUseWebSearch] = React.useState(true);
 
   function handleResearch() {

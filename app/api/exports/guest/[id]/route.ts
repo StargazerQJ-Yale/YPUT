@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getDefaultOrg } from "@/lib/org";
 import { downloadReceiptBuffer } from "@/lib/storage";
 import { buildWorkbook } from "@/lib/exports/excel";
+import { buildGuestSummaryRow, GUEST_SUMMARY_HEADERS } from "@/lib/exports/guest-summary";
 import { formatDate } from "@/lib/format";
 
 function sanitizeFilename(name: string): string {
@@ -59,7 +60,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const total = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
   rows.push(["", "", "", "", "Total", total, ""]);
 
+  const summaryRow = await buildGuestSummaryRow({
+    name: guest.name,
+    debateDate: guest.debateDate,
+    resolution: guest.resolution,
+    reimbursements: expenses.map((e) => ({
+      description: e.description,
+      eventName: e.eventName,
+      amount: Number(e.amount),
+      status: e.status,
+    })),
+  });
+
   const workbookBuffer = await buildWorkbook([
+    { name: "Summary", headers: GUEST_SUMMARY_HEADERS, rows: [summaryRow], wrapColumns: [2] },
     {
       name: "Expenses",
       headers: [

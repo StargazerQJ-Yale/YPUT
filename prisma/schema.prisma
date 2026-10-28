@@ -347,6 +347,7 @@ model Guest {
   orgId                 String
   name                  String
   debateDate            DateTime
+  resolution            String? // the debate's resolution/topic, for export paperwork
   status                GuestStatus @default(PENDING)
   researchSummary       String? // Gemini's background research, plain text
   matchedLectureshipId  String?
